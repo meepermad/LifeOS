@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getPublicEnv } from "@/lib/security/env";
+import { parseMiddlewareEnv } from "@/lib/security/middleware-env";
 
 const DASHBOARD_PATHS = [
   "/today",
@@ -11,6 +11,32 @@ const DASHBOARD_PATHS = [
   "/imports",
   "/events",
 ];
+
+export function shouldRunMiddleware(pathname: string): boolean {
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+
+  if (normalized.startsWith("/_next/static")) return false;
+  if (normalized.startsWith("/_next/image")) return false;
+  if (normalized === "/favicon.ico" || normalized === "/favicon.png") return false;
+  if (normalized.startsWith("/icons/")) return false;
+  if (normalized === "/offline.html") return false;
+  if (normalized === "/manifest.webmanifest") return false;
+  if (normalized === "/sw.js") return false;
+
+  return true;
+}
+
+function configurationUnavailableResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: {
+        code: "SERVICE_UNAVAILABLE",
+        message: "LifeOS is not configured for this environment.",
+      },
+    },
+    { status: 503 },
+  );
+}
 
 function isDashboardPath(pathname: string): boolean {
   return DASHBOARD_PATHS.some(
@@ -29,9 +55,15 @@ function isProtectedApiPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const envResult = parseMiddlewareEnv();
+  if (!envResult.success) {
+    return configurationUnavailableResponse();
+  }
 
-  const env = getPublicEnv();
+  const env = envResult.data;
+  const allowedEmail = env.APP_ALLOWED_EMAIL.toLowerCase();
+
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -63,7 +95,6 @@ export async function middleware(request: NextRequest) {
     isDashboardPath(pathname) || isProtectedApiPath(pathname);
 
   if (pathname === "/login" && user) {
-    const allowedEmail = process.env.APP_ALLOWED_EMAIL?.toLowerCase();
     if (user.email?.toLowerCase() === allowedEmail) {
       return NextResponse.redirect(new URL("/today", request.url));
     }
@@ -83,9 +114,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isProtected && user) {
-    const allowedEmail = process.env.APP_ALLOWED_EMAIL?.toLowerCase();
-
-    if (!allowedEmail || user.email?.toLowerCase() !== allowedEmail) {
+    if (user.email?.toLowerCase() !== allowedEmail) {
       await supabase.auth.signOut();
 
       if (pathname.startsWith("/api/")) {
@@ -111,6 +140,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icons/|offline.html|manifest.webmanifest|sw.js).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|icons/|offline.html|manifest.webmanifest|sw.js).*)",
   ],
 };

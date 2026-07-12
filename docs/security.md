@@ -230,7 +230,7 @@ When `MICROSOFT_INTEGRATION_ENABLED` is not `true`, Microsoft OAuth routes retur
 - No database RLS testing against live Supabase from CI (tests use mocks)
 - No rate limiting on mutation endpoints
 - Service role client exists but is unused in Phase 2
-- Middleware reads `APP_ALLOWED_EMAIL` from `process.env` directly (not Zod-validated at edge)
+- Middleware validates only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `APP_ALLOWED_EMAIL` via `safeParse`; missing configuration returns `503` without logging env values
 - CSP uses a documented starter policy; further tightening may be needed for stricter script-src control
 - Read-only event protection enforced in application layer; RLS does not block updates to `is_read_only` rows (rely on server checks)
 - Supabase SSR client requires a type assertion to align `@supabase/ssr` with `SupabaseClient<Database>` generics

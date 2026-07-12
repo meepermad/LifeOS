@@ -41,8 +41,15 @@ describe("validateAppUrlForEnvironment", () => {
   });
 
   it("accepts HTTPS production URLs", async () => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://lifeos.example.com");
-    const envModule = await loadEnvModule("production");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", baseEnv.NEXT_PUBLIC_SUPABASE_URL);
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      baseEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    );
+    const envModule = await import("@/lib/security/env");
     expect(envModule.getPublicEnv().NEXT_PUBLIC_APP_URL).toBe(
       "https://lifeos.example.com",
     );

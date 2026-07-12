@@ -65,11 +65,9 @@ export function TodayView({
             {formatAppDate(today, "EEEE, MMMM d")}
             {academicBreakTitle ? ` · ${academicBreakTitle}` : ""}
           </p>
-          {academicBreakTitle && (
-            <Link href="/school" className="mt-1 inline-block text-xs text-accent">
-              School calendar
-            </Link>
-          )}
+          <Link href="/school" className="mt-1 inline-block text-xs text-accent">
+            School & semester setup
+          </Link>
         </div>
         <div className="flex shrink-0 gap-2">
           <Link

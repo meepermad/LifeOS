@@ -64,6 +64,18 @@ export default async function SettingsPage() {
         </div>
       </SectionCard>
 
+      <SectionCard
+        title="School"
+        description="Set up your semester, courses, class meetings, breaks, and Canvas class review."
+      >
+        <Link
+          href="/school"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-accent hover:text-accent"
+        >
+          Open semester setup
+        </Link>
+      </SectionCard>
+
       <SectionCard title="Local calendars" description="Default calendars cannot be deleted in this phase.">
         <CalendarsSettings calendars={calendars} />
       </SectionCard>
@@ -137,12 +149,6 @@ export default async function SettingsPage() {
           className="mt-3 inline-block text-sm text-accent hover:text-accent-hover"
         >
           Manage imports →
-        </Link>
-        <Link
-          href="/school"
-          className="mt-2 inline-block text-sm text-accent hover:text-accent-hover"
-        >
-          School & semester setup →
         </Link>
       </SectionCard>
 

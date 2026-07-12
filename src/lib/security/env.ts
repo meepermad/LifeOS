@@ -60,10 +60,16 @@ const basePublicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
 });
 
+const supabasePublicEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+});
+
 const publicEnvSchema = basePublicEnvSchema.superRefine(refineAppUrl);
 
-const serverEnvSchema = basePublicEnvSchema
+const serverEnvSchema = supabasePublicEnvSchema
   .extend({
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
     APP_ALLOWED_EMAIL: z.string().email(),
     TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
@@ -78,13 +84,41 @@ const serverEnvSchema = basePublicEnvSchema
     VAPID_PRIVATE_KEY: z.string().optional(),
     VAPID_SUBJECT: z.string().optional(),
   })
-  .superRefine(refineAppUrl);
+  .superRefine((data, ctx) => {
+    if (data.NEXT_PUBLIC_APP_URL) {
+      refineAppUrl({ NEXT_PUBLIC_APP_URL: data.NEXT_PUBLIC_APP_URL }, ctx);
+    }
+  });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
+export type SupabasePublicEnv = z.infer<typeof supabasePublicEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let cachedPublicEnv: PublicEnv | null = null;
+let cachedSupabasePublicEnv: SupabasePublicEnv | null = null;
 let cachedServerEnv: ServerEnv | null = null;
+let cachedAllowedEmail: string | null = null;
+
+export function getSupabasePublicEnv(): SupabasePublicEnv {
+  if (cachedSupabasePublicEnv) {
+    return cachedSupabasePublicEnv;
+  }
+
+  const result = supabasePublicEnvSchema.safeParse({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  });
+
+  if (!result.success) {
+    throw new ConfigurationError(
+      "Supabase public environment is not configured",
+    );
+  }
+
+  cachedSupabasePublicEnv = result.data;
+  return cachedSupabasePublicEnv;
+}
 
 export function getPublicEnv(): PublicEnv {
   if (cachedPublicEnv) {
@@ -107,7 +141,8 @@ export function getServerEnv(): ServerEnv {
   }
 
   cachedServerEnv = serverEnvSchema.parse({
-    ...getPublicEnv(),
+    ...getSupabasePublicEnv(),
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     APP_ALLOWED_EMAIL: process.env.APP_ALLOWED_EMAIL,
     TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
@@ -127,7 +162,17 @@ export function getServerEnv(): ServerEnv {
 }
 
 export function getAllowedEmail(): string {
-  return getServerEnv().APP_ALLOWED_EMAIL.toLowerCase();
+  if (cachedAllowedEmail) {
+    return cachedAllowedEmail;
+  }
+
+  const result = z.string().email().safeParse(process.env.APP_ALLOWED_EMAIL);
+  if (!result.success) {
+    throw new ConfigurationError("APP_ALLOWED_EMAIL is not configured");
+  }
+
+  cachedAllowedEmail = result.data.toLowerCase();
+  return cachedAllowedEmail;
 }
 
 export function getTokenEncryptionKeyBytes(): Buffer {

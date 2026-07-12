@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { getPublicEnv, getServerEnv } from "@/lib/security/env";
+import { getServerEnv, getSupabasePublicEnv } from "@/lib/security/env";
 import { ConfigurationError } from "@/lib/errors/app-error";
 
 /**
@@ -15,7 +15,7 @@ export function createAdminClient() {
     );
   }
 
-  const env = getPublicEnv();
+  const env = getSupabasePublicEnv();
 
   return createSupabaseClient(
     env.NEXT_PUBLIC_SUPABASE_URL,

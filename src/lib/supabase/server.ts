@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { getPublicEnv } from "@/lib/security/env";
+import { getSupabasePublicEnv } from "@/lib/security/env";
 import type { Database } from "@/types/database.types";
 
 export type ServerSupabaseClient = SupabaseClient<Database>;
@@ -9,7 +9,7 @@ export type ServerSupabaseClient = SupabaseClient<Database>;
 function buildServerSupabaseClient(
   cookieStore: Awaited<ReturnType<typeof cookies>>,
 ): ServerSupabaseClient {
-  const env = getPublicEnv();
+  const env = getSupabasePublicEnv();
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,

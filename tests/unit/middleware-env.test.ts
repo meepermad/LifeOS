@@ -69,3 +69,40 @@ describe("parseMiddlewareEnv", () => {
     expect(parseMiddlewareEnv().success).toBe(true);
   });
 });
+
+describe("getSupabasePublicEnv", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("requires only Supabase public variables", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", validEnv.NEXT_PUBLIC_SUPABASE_URL);
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      validEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    );
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", undefined);
+
+    const envModule = await import("@/lib/security/env");
+    expect(envModule.getSupabasePublicEnv()).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: validEnv.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        validEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    });
+  });
+
+  it("does not require NEXT_PUBLIC_APP_URL for getServerEnv", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", validEnv.NEXT_PUBLIC_SUPABASE_URL);
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      validEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    );
+    vi.stubEnv("APP_ALLOWED_EMAIL", validEnv.APP_ALLOWED_EMAIL);
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", undefined);
+
+    const envModule = await import("@/lib/security/env");
+    expect(() => envModule.getServerEnv()).not.toThrow();
+    expect(envModule.getServerEnv().NEXT_PUBLIC_APP_URL).toBeUndefined();
+  });
+});

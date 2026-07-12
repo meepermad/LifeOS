@@ -48,6 +48,13 @@ import { getLifeOSPlanningCalendar } from "@/lib/data/calendars";
 import { getPlanningPreferences } from "@/lib/data/preferences";
 import { createClient } from "@/lib/supabase/server";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
+import {
+  executeWorkCommand,
+  getWorkHoursResponse,
+  getWorkScheduleResponse,
+  previewWorkCommand,
+} from "@/lib/work/assistant-commands";
+import { WRITE_INTENTS, READ_ONLY_INTENTS } from "@/lib/assistant/intents";
 import type { EventType } from "@/types/domain";
 import type { Json } from "@/types/database.types";
 
@@ -236,6 +243,24 @@ export async function executeReadOnly(
         content: formatted.content,
         messageType: "text",
         structuredPayload: formatted.payload,
+      };
+    }
+
+    case "show_work_schedule": {
+      const content = await getWorkScheduleResponse(command);
+      return {
+        content,
+        messageType: "text",
+        structuredPayload: { link: "/work" },
+      };
+    }
+
+    case "show_work_hours": {
+      const content = await getWorkHoursResponse(command);
+      return {
+        content,
+        messageType: "text",
+        structuredPayload: { link: "/work" },
       };
     }
 
@@ -451,6 +476,23 @@ export async function buildWritePreview(
         actionPreview: {
           actionType: "clear_chat",
           proposedPayload: { command },
+        },
+      };
+    }
+
+    case "set_work_schedule":
+    case "add_work_shift":
+    case "update_work_shift":
+    case "delete_work_shift":
+    case "copy_work_schedule": {
+      const preview = await previewWorkCommand(command);
+      return {
+        content: preview.content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/work" },
+        actionPreview: {
+          actionType: command.intent,
+          proposedPayload: { command, source: "assistant" },
         },
       };
     }
@@ -716,6 +758,23 @@ export async function executeConfirmedAction(input: {
       };
     }
 
+    case "set_work_schedule":
+    case "add_work_shift":
+    case "update_work_shift":
+    case "delete_work_shift":
+    case "copy_work_schedule": {
+      const command = (payload.command ?? payload) as ParsedCommand;
+      const message = await executeWorkCommand(command, {
+        assistantActionId: input.actionId,
+      });
+      const result = formatActionResult(message);
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
     default: {
       const err = formatError("Unknown action type.");
       return {
@@ -728,24 +787,11 @@ export async function executeConfirmedAction(input: {
 }
 
 export function isWriteIntent(command: ParsedCommand): boolean {
-  return [
-    "create_event",
-    "create_task",
-    "complete_task",
-    "accept_proposals",
-    "reject_proposals",
-    "regenerate_plan",
-    "clear_chat",
-  ].includes(command.intent);
+  return WRITE_INTENTS.has(command.intent as never);
 }
 
 export function isReadOnlyIntent(command: ParsedCommand): boolean {
-  return [
-    "show_agenda",
-    "show_workload",
-    "find_availability",
-    "generate_plan",
-    "help",
-    "unknown",
-  ].includes(command.intent);
+  return (
+    READ_ONLY_INTENTS.has(command.intent as never) || command.intent === "unknown"
+  );
 }

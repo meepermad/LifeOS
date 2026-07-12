@@ -21,6 +21,12 @@ export const HELP_TEXT = `I understand these planning commands:
 • Complete Network Security Lab 4
 • Accept all proposals for today
 • Reject proposal 2 / Regenerate this week's plan
+• Show my work schedule this week
+• How many hours am I working this week?
+• I work Monday 2–10 and Thursday 10–6:30
+• Add a work shift Tuesday from 1 PM to 9 PM
+• Delete my Monday work shift
+• Copy last week's work schedule to this week
 • help / clear chat
 
 I only act on commands I recognize. Write actions require your confirmation.`;

@@ -80,6 +80,11 @@ export async function getLifeOSPlanningCalendar(): Promise<CalendarRow | null> {
   );
 }
 
+export async function getWorkCalendar(): Promise<CalendarRow | null> {
+  const calendars = await listCalendars();
+  return calendars.find((calendar) => calendar.name === "Work") ?? null;
+}
+
 export async function getCanvasCalendar(): Promise<CalendarRow> {
   const user = await requireAllowedUser();
   const supabase = await createClient();

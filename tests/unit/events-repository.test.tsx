@@ -58,6 +58,9 @@ function buildEvent(overrides: Partial<EventWithCalendar> = {}): EventWithCalend
     sensitivity: null,
     organizer_name: null,
     online_meeting_url: null,
+    unpaid_break_minutes: 0,
+    shift_note: null,
+    shift_source_label: null,
     ...overrides,
   };
 }

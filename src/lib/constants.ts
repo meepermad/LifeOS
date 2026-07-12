@@ -87,8 +87,8 @@ export const DEFAULT_CALENDARS = [
     sync_enabled: false,
   },
   {
-    name: "Home Depot Work",
-    source: "workforce_import" as const,
+    name: "Work",
+    source: "manual" as const,
     is_writable: true,
     is_visible: true,
     sync_enabled: false,

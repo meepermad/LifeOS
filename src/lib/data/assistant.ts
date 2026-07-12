@@ -234,6 +234,47 @@ export async function getPendingProposedAction(
   };
 }
 
+export async function getActionPreviewById(
+  actionId: string,
+): Promise<AssistantActionPreview | null> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("assistant_actions")
+    .select("*")
+    .eq("id", actionId)
+    .eq("user_id", user.id)
+    .eq("status", "proposed")
+    .gt("expires_at", now)
+    .maybeSingle();
+
+  if (error) {
+    throw new DatabaseError("Failed to load assistant action");
+  }
+
+  if (!data) return null;
+
+  const { data: message } = await supabase
+    .from("assistant_messages")
+    .select("*")
+    .eq("id", data.source_message_id ?? "")
+    .maybeSingle();
+
+  return {
+    id: data.id,
+    actionType: data.action_type,
+    status: data.status,
+    proposedPayload: data.proposed_payload as Record<string, unknown>,
+    expiresAt: data.expires_at,
+    content: message?.content ?? "",
+    structuredPayload:
+      (message?.structured_payload as Record<string, unknown>) ?? {},
+    messageType: message?.message_type ?? "action_preview",
+  };
+}
+
 export async function supersedePendingActions(threadId: string): Promise<void> {
   await requireAllowedUser();
   const supabase = await createClient();

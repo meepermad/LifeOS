@@ -15,14 +15,15 @@ export function nowInAppTimezone(): Date {
   return toZonedTime(new Date(), APP_TIMEZONE);
 }
 
-export function toUtcFromAppLocal(
+export function toUtcFromProfileLocal(
   dateStr: string,
   timeStr: string,
+  timezone: string,
 ): Date {
   const localIso = `${dateStr}T${timeStr}:00`;
-  const utc = fromZonedTime(localIso, APP_TIMEZONE);
+  const utc = fromZonedTime(localIso, timezone);
 
-  const roundTrip = formatInTimeZone(utc, APP_TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+  const roundTrip = formatInTimeZone(utc, timezone, "yyyy-MM-dd'T'HH:mm");
   if (roundTrip !== localIso.slice(0, 16)) {
     throw new Error(
       "Invalid or ambiguous local time around daylight-saving transition",
@@ -30,6 +31,13 @@ export function toUtcFromAppLocal(
   }
 
   return utc;
+}
+
+export function toUtcFromAppLocal(
+  dateStr: string,
+  timeStr: string,
+): Date {
+  return toUtcFromProfileLocal(dateStr, timeStr, APP_TIMEZONE);
 }
 
 export function toUtcFromAppLocalDate(dateStr: string): Date {

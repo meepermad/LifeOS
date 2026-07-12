@@ -79,6 +79,60 @@ const regeneratePlanSchema = z.object({
   weekOffset: z.number().int().optional(),
 });
 
+const workShiftEntrySchema = z.object({
+  dateKey: dateKeySchema,
+  dayLabel: z.string(),
+  isOff: z.boolean(),
+  startTime: timeSchema.optional(),
+  endTime: timeSchema.optional(),
+  isOvernight: z.boolean().optional(),
+});
+
+const showWorkScheduleSchema = z.object({
+  intent: z.literal("show_work_schedule"),
+  scope: z.enum(["week", "next"]),
+  weekOffset: z.number().int().optional(),
+});
+
+const showWorkHoursSchema = z.object({
+  intent: z.literal("show_work_hours"),
+  weekOffset: z.number().int().optional(),
+});
+
+const setWorkScheduleSchema = z.object({
+  intent: z.literal("set_work_schedule"),
+  shifts: z.array(workShiftEntrySchema).min(1),
+  weekOffset: z.number().int().optional(),
+});
+
+const addWorkShiftSchema = z.object({
+  intent: z.literal("add_work_shift"),
+  dateKey: dateKeySchema,
+  startTime: timeSchema.optional(),
+  endTime: timeSchema.optional(),
+  isOvernight: z.boolean().optional(),
+});
+
+const updateWorkShiftSchema = z.object({
+  intent: z.literal("update_work_shift"),
+  sourceDateKey: dateKeySchema,
+  targetDateKey: dateKeySchema.optional(),
+  startTime: timeSchema.optional(),
+  endTime: timeSchema.optional(),
+  isOvernight: z.boolean().optional(),
+});
+
+const deleteWorkShiftSchema = z.object({
+  intent: z.literal("delete_work_shift"),
+  dateKey: dateKeySchema,
+});
+
+const copyWorkScheduleSchema = z.object({
+  intent: z.literal("copy_work_schedule"),
+  sourceWeekOffset: z.number().int(),
+  targetWeekOffset: z.number().int(),
+});
+
 const helpSchema = z.object({ intent: z.literal("help") });
 const clearChatSchema = z.object({ intent: z.literal("clear_chat") });
 const unknownSchema = z.object({
@@ -97,6 +151,13 @@ export const parsedCommandSchema = z.discriminatedUnion("intent", [
   acceptProposalsSchema,
   rejectProposalsSchema,
   regeneratePlanSchema,
+  showWorkScheduleSchema,
+  showWorkHoursSchema,
+  setWorkScheduleSchema,
+  addWorkShiftSchema,
+  updateWorkShiftSchema,
+  deleteWorkShiftSchema,
+  copyWorkScheduleSchema,
   helpSchema,
   clearChatSchema,
   unknownSchema,

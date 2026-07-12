@@ -138,3 +138,11 @@ export type AssistantActionStatus =
   | "rejected"
   | "failed"
   | "expired";
+
+export type WorkShiftTemplateRow =
+  Database["public"]["Tables"]["work_shift_templates"]["Row"];
+
+export type ShortcutDeviceRow =
+  Database["public"]["Tables"]["shortcut_devices"]["Row"];
+
+export type SpokenDetailLevel = "private" | "detailed";

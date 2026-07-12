@@ -5,11 +5,14 @@ import { parseMiddlewareEnv } from "@/lib/security/middleware-env";
 const DASHBOARD_PATHS = [
   "/today",
   "/week",
+  "/work",
   "/tasks",
   "/chat",
   "/settings",
   "/imports",
   "/events",
+  "/work",
+  "/assistant",
 ];
 
 export function shouldRunMiddleware(pathname: string): boolean {
@@ -49,6 +52,7 @@ function isProtectedApiPath(pathname: string): boolean {
     pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/auth/") &&
     !pathname.startsWith("/api/cron/") &&
+    !pathname.startsWith("/api/shortcuts/") &&
     pathname !== "/api/health" &&
     pathname !== "/api/readiness"
   );

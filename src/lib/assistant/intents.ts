@@ -67,6 +67,45 @@ export type ParsedCommand =
       periodType: PlanPeriodType;
       weekOffset?: number;
     }
+  | {
+      intent: "show_work_schedule";
+      scope: "week" | "next";
+      weekOffset?: number;
+    }
+  | { intent: "show_work_hours"; weekOffset?: number }
+  | {
+      intent: "set_work_schedule";
+      shifts: Array<{
+        dateKey: string;
+        dayLabel: string;
+        isOff: boolean;
+        startTime?: string;
+        endTime?: string;
+        isOvernight?: boolean;
+      }>;
+      weekOffset?: number;
+    }
+  | {
+      intent: "add_work_shift";
+      dateKey: string;
+      startTime?: string;
+      endTime?: string;
+      isOvernight?: boolean;
+    }
+  | {
+      intent: "update_work_shift";
+      sourceDateKey: string;
+      targetDateKey?: string;
+      startTime?: string;
+      endTime?: string;
+      isOvernight?: boolean;
+    }
+  | { intent: "delete_work_shift"; dateKey: string }
+  | {
+      intent: "copy_work_schedule";
+      sourceWeekOffset: number;
+      targetWeekOffset: number;
+    }
   | { intent: "help" }
   | { intent: "clear_chat" }
   | { intent: "unknown"; raw: string };
@@ -83,7 +122,10 @@ export type MissingField =
   | "title"
   | "dueDate"
   | "taskMatch"
-  | "proposalSelection";
+  | "proposalSelection"
+  | "shiftDay"
+  | "shiftTime"
+  | "shiftConfirmation";
 
 export type ParseSuccess = { kind: "command"; command: ParsedCommand };
 
@@ -114,6 +156,11 @@ export const WRITE_INTENTS = new Set([
   "reject_proposals",
   "regenerate_plan",
   "clear_chat",
+  "set_work_schedule",
+  "add_work_shift",
+  "update_work_shift",
+  "delete_work_shift",
+  "copy_work_schedule",
 ] as const);
 
 export const READ_ONLY_INTENTS = new Set([
@@ -122,4 +169,6 @@ export const READ_ONLY_INTENTS = new Set([
   "find_availability",
   "generate_plan",
   "help",
+  "show_work_schedule",
+  "show_work_hours",
 ] as const);

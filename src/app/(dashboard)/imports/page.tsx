@@ -43,9 +43,13 @@ export default async function ImportsPage() {
         <CanvasIntegration initialStatus={canvasStatus} />
       </SectionCard>
 
-      <SectionCard title="Home Depot Workforce">
+      <SectionCard title="Work schedule">
         <p className="text-sm text-foreground/80">
-          Weekly shift entry available in Phase 9.
+          Enter weekly work shifts on the{" "}
+          <a href="/work" className="text-accent underline">
+            Work schedule
+          </a>{" "}
+          page.
         </p>
       </SectionCard>
     </div>

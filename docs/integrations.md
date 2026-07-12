@@ -232,12 +232,13 @@ Schedule: `0 * * * *` (hourly)
 - Graph throttling (`429`) is retried with `Retry-After`
 - K-State or other tenant approval must be tested with a real account after Entra registration
 
-## Workforce import (Phase 9)
+## Work schedule (Phase 9)
 
-- **Method:** Structured weekly form (no scraping)
-- **Storage:** Shifts as events in "Home Depot Work" calendar
-- **Identifier:** `week_start + shift_date`
-- **Version 2:** Screenshot/PDF upload with OCR (deferred)
+- **Method:** Structured weekly form at `/work` (no scraping)
+- **Storage:** Shifts as `event_type: work` events on the **Work** calendar
+- **Identifier:** `external_event_id = work-shift:{yyyy-MM-dd}`
+- **Assistant:** Deterministic work-schedule commands with confirmation previews
+- **Shortcuts:** `POST /api/shortcuts/command` with per-device tokens (see [shortcuts.md](shortcuts.md))
 
 ## Push notifications (Phase 5)
 

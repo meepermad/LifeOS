@@ -3,6 +3,7 @@ import {
   extractDateFromText,
   parseTimeRange,
 } from "@/lib/assistant/date-parser";
+import { resolveShiftTimeRange } from "@/lib/work/shift-time-resolver";
 import type {
   ClarificationState,
   PartialCommand,
@@ -135,6 +136,65 @@ export function mergeClarification(
       return {
         kind: "command",
         command: { ...partial, title: followUpText.trim() } as ParsedCommand,
+      };
+    }
+    case "shiftDay": {
+      const date = extractDateFromText(followUpText, now);
+      const dayMatch = followUpText.toLowerCase().match(
+        /\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/,
+      );
+      let dateKey = date?.dateKey;
+      if (!dateKey && dayMatch) {
+        const weekdayDate = extractDateFromText(dayMatch[1], now);
+        dateKey = weekdayDate?.dateKey;
+      }
+      if (!dateKey) {
+        return {
+          kind: "clarification",
+          partial,
+          missingField: "shiftDay",
+          prompt: "Which day? For example: Monday or tomorrow.",
+        };
+      }
+      if (partial.intent === "delete_work_shift") {
+        return {
+          kind: "command",
+          command: { intent: "delete_work_shift", dateKey },
+        };
+      }
+      return {
+        kind: "clarification",
+        partial: { intent: "add_work_shift", dateKey } as PartialCommand,
+        missingField: "shiftTime",
+        prompt: "What are the start and end times?",
+      };
+    }
+    case "shiftTime": {
+  const resolved = resolveShiftTimeRange(followUpText);
+  if (resolved.kind === "clarification") {
+    return {
+      kind: "clarification",
+      partial,
+      missingField: "shiftTime",
+      prompt: resolved.prompt,
+    };
+  }
+      const partialWithDate = partial as PartialCommand & { dateKey?: string };
+      if (partial.intent === "add_work_shift" && partialWithDate.dateKey) {
+        return {
+          kind: "command",
+          command: {
+            intent: "add_work_shift",
+            dateKey: partialWithDate.dateKey,
+            startTime: resolved.value.startTime,
+            endTime: resolved.value.endTime,
+            isOvernight: resolved.value.isOvernight,
+          },
+        };
+      }
+      return {
+        kind: "unknown",
+        raw: followUpText,
       };
     }
     case "taskMatch": {

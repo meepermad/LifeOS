@@ -225,6 +225,17 @@ When `MICROSOFT_INTEGRATION_ENABLED` is not `true`, Microsoft OAuth routes retur
 - Stale proposals are marked when calendar or task state changes between generate and accept
 - `remaining_minutes` is not reduced on accept — completion remains a separate user action
 
+## Shortcut devices (Phase 9)
+
+- `shortcut_devices` stores only `token_hash` and `token_prefix`; plaintext tokens are shown once at registration/rotation
+- Authenticated users manage devices through SECURITY DEFINER RPCs; direct table mutations are revoked
+- `POST /api/shortcuts/command` is exempt from cookie auth; it authenticates via `Authorization: Bearer <token>` only
+- User identity is resolved from the device record — never from request body
+- Write commands create assistant `proposed` actions; execution requires normal LifeOS session confirmation
+- Rate limits: per-device, per-IP, and failed-auth throttling (in-memory, best-effort on serverless)
+- `clientRequestId` deduplication via `shortcut_command_dedup`
+- Authorization headers are redacted in logs
+
 ## Known limitations (Phase 2)
 
 - No database RLS testing against live Supabase from CI (tests use mocks)

@@ -3,6 +3,7 @@ const ALLOWED_NOTIFICATION_ROUTES = [
   "/week",
   "/tasks",
   "/settings",
+  "/chat",
 ] as const;
 
 export type AllowedNotificationRoute =
@@ -14,6 +15,7 @@ export function isAllowedNotificationRoute(
   if (!url.startsWith("/")) return false;
   if (url.includes("://") || url.startsWith("//")) return false;
   const path = url.split("?")[0]?.split("#")[0] ?? url;
+  if (path === "/chat") return true;
   return (ALLOWED_NOTIFICATION_ROUTES as readonly string[]).includes(path);
 }
 

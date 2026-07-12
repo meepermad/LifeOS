@@ -15,11 +15,14 @@ import { PlanningPreferencesForm } from "@/components/settings/planning-preferen
 import { ProfileSettingsForm } from "@/components/settings/profile-settings";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { SectionCard } from "@/components/forms/ui";
+import { ShortcutDeviceSettings } from "@/components/settings/shortcut-device-settings";
+import { listShortcutDevices } from "@/lib/data/shortcut-devices";
+import { getServerEnv } from "@/lib/security/env";
 
 export default async function SettingsPage() {
   const user = await requireAllowedUser();
   const microsoftEnabled = isMicrosoftIntegrationEnabled();
-  const [profile, preferences, calendars, availabilityRules, canvasConnection, devices] =
+  const [profile, preferences, calendars, availabilityRules, canvasConnection, devices, shortcutDevices] =
     await Promise.all([
       getProfile(),
       getPlanningPreferences(),
@@ -27,7 +30,9 @@ export default async function SettingsPage() {
       listAvailabilityRules(),
       getCanvasConnectionSafe(),
       listUserDevices(),
+      listShortcutDevices(),
     ]);
+  const shortcutApiUrl = `${getServerEnv().NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? ""}/api/shortcuts/command`;
   const microsoftConnection = microsoftEnabled
     ? await getMicrosoftConnectionSafe()
     : null;
@@ -133,6 +138,16 @@ export default async function SettingsPage() {
         >
           Manage imports →
         </Link>
+      </SectionCard>
+
+      <SectionCard
+        title="Siri and Shortcuts"
+        description="Connect Apple Shortcuts to send commands to LifeOS."
+      >
+        <ShortcutDeviceSettings
+          initialDevices={shortcutDevices}
+          apiUrl={shortcutApiUrl}
+        />
       </SectionCard>
 
       <SectionCard title="PWA">

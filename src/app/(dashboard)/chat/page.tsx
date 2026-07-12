@@ -1,12 +1,25 @@
-import { getOrCreateActiveThread, listThreadMessages, getPendingProposedAction } from "@/lib/data/assistant";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
+import {
+  getActionPreviewById,
+  getOrCreateActiveThread,
+  getPendingProposedAction,
+  listThreadMessages,
+} from "@/lib/data/assistant";
 
-export default async function ChatPage() {
+type Props = {
+  searchParams: Promise<{ action?: string }>;
+};
+
+export default async function ChatPage({ searchParams }: Props) {
+  const params = await searchParams;
   const thread = await getOrCreateActiveThread();
-  const [messages, pendingAction] = await Promise.all([
+  const [messages, pendingFromThread, pendingFromLink] = await Promise.all([
     listThreadMessages(thread.id),
     getPendingProposedAction(thread.id),
+    params.action ? getActionPreviewById(params.action) : Promise.resolve(null),
   ]);
+
+  const pendingAction = pendingFromLink ?? pendingFromThread;
 
   return (
     <AssistantChat

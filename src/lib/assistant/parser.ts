@@ -6,6 +6,16 @@ import {
   parseTimeOfDayPreference,
   parseTimeRange,
 } from "@/lib/assistant/date-parser";
+import {
+  parseAddWorkShift,
+  parseCopyWorkSchedule,
+  parseDeleteWorkShift,
+  parseSetWorkSchedule,
+  parseShowWorkHours,
+  parseShowWorkSchedule,
+  parseUpdateWorkShift,
+  parseWorkOffDay,
+} from "@/lib/assistant/work-schedule-parser";
 import type {
   PartialCommand,
   ParsedCommand,
@@ -462,6 +472,14 @@ export function parseCommand(
     parseRegeneratePlan,
     parseAcceptProposals,
     parseRejectProposals,
+    parseCopyWorkSchedule,
+    parseSetWorkSchedule,
+    parseAddWorkShift,
+    parseUpdateWorkShift,
+    parseDeleteWorkShift,
+    parseWorkOffDay,
+    parseShowWorkSchedule,
+    parseShowWorkHours,
     parseCompleteTask,
     parseCreateTask,
     parseCreateEvent,

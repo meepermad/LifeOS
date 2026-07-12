@@ -320,10 +320,13 @@ export type Database = {
           related_task_id: string | null
           sensitivity: string | null
           show_as: string | null
+          shift_note: string | null
+          shift_source_label: string | null
           source: string
           start_at: string
           status: string
           title: string
+          unpaid_break_minutes: number
           updated_at: string
           user_id: string
         }
@@ -349,10 +352,13 @@ export type Database = {
           related_task_id?: string | null
           sensitivity?: string | null
           show_as?: string | null
+          shift_note?: string | null
+          shift_source_label?: string | null
           source?: string
           start_at: string
           status?: string
           title: string
+          unpaid_break_minutes?: number
           updated_at?: string
           user_id: string
         }
@@ -378,10 +384,13 @@ export type Database = {
           related_task_id?: string | null
           sensitivity?: string | null
           show_as?: string | null
+          shift_note?: string | null
+          shift_source_label?: string | null
           source?: string
           start_at?: string
           status?: string
           title?: string
+          unpaid_break_minutes?: number
           updated_at?: string
           user_id?: string
         }
@@ -880,6 +889,125 @@ export type Database = {
           },
         ]
       }
+      work_shift_templates: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          label: string | null
+          location: string | null
+          name: string
+          start_time: string
+          unpaid_break_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          label?: string | null
+          location?: string | null
+          name: string
+          start_time: string
+          unpaid_break_minutes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          label?: string | null
+          location?: string | null
+          name?: string
+          start_time?: string
+          unpaid_break_minutes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shortcut_devices: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error_code: string | null
+          last_success_at: string | null
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          spoken_detail_level: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          spoken_detail_level?: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          spoken_detail_level?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shortcut_command_dedup: {
+        Row: {
+          client_request_id: string
+          created_at: string
+          device_id: string
+          id: string
+          response_json: Json
+        }
+        Insert: {
+          client_request_id: string
+          created_at?: string
+          device_id: string
+          id?: string
+          response_json: Json
+        }
+        Update: {
+          client_request_id?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          response_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortcut_command_dedup_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "shortcut_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workload_snapshots: {
         Row: {
           allocated_task_minutes: number
@@ -1008,6 +1136,80 @@ export type Database = {
       is_push_endpoint_registered: {
         Args: { p_endpoint: string }
         Returns: boolean
+      }
+      register_shortcut_device: {
+        Args: {
+          p_name: string
+          p_token_hash: string
+          p_token_prefix: string
+          p_spoken_detail_level?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          spoken_detail_level: string
+          token_prefix: string
+        }[]
+      }
+      list_shortcut_devices: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error_code: string | null
+          last_success_at: string | null
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          spoken_detail_level: string
+          token_prefix: string
+        }[]
+      }
+      rotate_shortcut_device_token: {
+        Args: {
+          p_device_id: string
+          p_token_hash: string
+          p_token_prefix: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          spoken_detail_level: string
+          token_prefix: string
+        }[]
+      }
+      revoke_shortcut_device: {
+        Args: { p_device_id: string }
+        Returns: boolean
+      }
+      update_shortcut_device: {
+        Args: {
+          p_device_id: string
+          p_name: string
+          p_spoken_detail_level: string
+        }
+        Returns: boolean
+      }
+      record_shortcut_device_usage: {
+        Args: {
+          p_device_id: string
+          p_success: boolean
+          p_error_code?: string
+        }
+        Returns: undefined
+      }
+      store_shortcut_command_dedup: {
+        Args: {
+          p_device_id: string
+          p_client_request_id: string
+          p_response_json: Json
+        }
+        Returns: Json
       }
       reject_planning_proposal: {
         Args: { p_proposal_id: string }

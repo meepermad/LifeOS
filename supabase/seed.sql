@@ -1,0 +1,3 @@
+-- LifeOS seed data
+-- User-specific data is created at runtime via ensureUserInitialized().
+-- No seed rows are required for Phase 2.

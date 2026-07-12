@@ -1,0 +1,19 @@
+{
+  "value": [
+    {
+      "id": "AAMkAGI2TG93AAA=",
+      "subject": "CS 101 Lecture",
+      "start": { "dateTime": "2026-07-15T14:00:00.0000000", "timeZone": "UTC" },
+      "end": { "dateTime": "2026-07-15T15:00:00.0000000", "timeZone": "UTC" },
+      "isAllDay": false,
+      "isCancelled": false,
+      "showAs": "busy",
+      "sensitivity": "normal",
+      "location": { "displayName": "Engineering Hall 101" },
+      "lastModifiedDateTime": "2026-07-10T12:00:00Z",
+      "changeKey": "abc123",
+      "type": "singleInstance"
+    }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendars/AAMkAGI2TG93AAA=/calendarView/delta?$deltatoken=abc"
+}

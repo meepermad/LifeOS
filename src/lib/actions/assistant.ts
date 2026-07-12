@@ -12,14 +12,14 @@ import {
 } from "@/lib/assistant/executor";
 import { parseCommand } from "@/lib/assistant/parser";
 import { validateParsedCommand, assistantMessageSchema } from "@/lib/assistant/schemas";
-import { getProfile } from "@/lib/data/bootstrap";
-import { listAcademicTerms } from "@/lib/data/academic/terms";
-import { listExceptionsForTerm } from "@/lib/data/academic/exceptions";
+import { buildParseOptions } from "@/lib/actions/assistant-parse-options";
 import { telemetryFromCommand } from "@/lib/assistant/parser-telemetry";
 import { extractRecognizedDatePhrase } from "@/lib/assistant/academic-parser";
 import { logParserOutcome } from "@/lib/data/assistant-parser-outcomes";
 import { suggestIntentsForUnknown } from "@/lib/assistant/paraphrase";
 import { formatUnknownResponse } from "@/lib/assistant/responses";
+import { tryAiIntentRouter } from "@/lib/assistant/ai-intent-router/router";
+import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import type { ClarificationState, ParsedCommand } from "@/lib/assistant/intents";
 import {
   archiveThreadAndStartFresh,
@@ -70,23 +70,8 @@ function toActionError<T = void>(error: unknown): ActionResult<T> {
   return { success: false, error: "An unexpected error occurred" };
 }
 
-async function buildParseOptions() {
-  const [profile, terms] = await Promise.all([
-    getProfile(),
-    listAcademicTerms(),
-  ]);
-  const activeTerm = terms.find((term) => term.status === "active");
-  const exceptions = activeTerm
-    ? await listExceptionsForTerm(activeTerm.id)
-    : [];
-  return {
-    timezone: profile.timezone,
-    academicContext: {
-      terms,
-      exceptions,
-      timezone: profile.timezone,
-    },
-  };
+async function buildParseOptionsForAction() {
+  return buildParseOptions();
 }
 
 function revalidateAssistantPaths() {
@@ -216,7 +201,7 @@ export async function sendAssistantMessageAction(
     const pendingClarification = await getPendingClarification(thread.id);
     let parseResult;
 
-    const parseOptions = await buildParseOptions();
+    const parseOptions = await buildParseOptionsForAction();
 
     if (pendingClarification) {
       const state = clarificationStateFromAction(pendingClarification);
@@ -265,24 +250,69 @@ export async function sendAssistantMessageAction(
     }
 
     if (parseResult.kind === "unknown") {
-      const phrase = extractRecognizedDatePhrase(parseResult.raw);
-      const suggestions = suggestIntentsForUnknown(parseResult.raw);
-      await logParserOutcome({
-        normalizedIntent: null,
-        success: false,
-        clarificationReason: "unrecognized_command",
-        dateRangeKind: null,
-        weekOffset: null,
+      const user = await requireAllowedUser();
+      const aiResult = await tryAiIntentRouter({
+        message: parseResult.raw,
+        userId: user.id,
+        parseOptions,
       });
-      await insertMessage({
-        threadId: thread.id,
-        role: "assistant",
-        messageType: "text",
-        content: formatUnknownResponse(parseResult.raw, suggestions, phrase),
-        structuredPayload: { suggestions, recognizedPhrase: phrase },
-      });
-      revalidateAssistantPaths();
-      return { success: true, data: await loadChatState(thread.id) };
+
+      if (aiResult.attempted) {
+        parseResult = aiResult.parseResult;
+      }
+
+      if (parseResult.kind === "unknown") {
+        const phrase = extractRecognizedDatePhrase(parseResult.raw);
+        const suggestions = suggestIntentsForUnknown(parseResult.raw);
+        await logParserOutcome({
+          normalizedIntent: null,
+          success: false,
+          clarificationReason: "unrecognized_command",
+          dateRangeKind: null,
+          weekOffset: null,
+        });
+        await insertMessage({
+          threadId: thread.id,
+          role: "assistant",
+          messageType: "text",
+          content: formatUnknownResponse(parseResult.raw, suggestions, phrase),
+          structuredPayload: { suggestions, recognizedPhrase: phrase },
+        });
+        revalidateAssistantPaths();
+        return { success: true, data: await loadChatState(thread.id) };
+      }
+
+      if (parseResult.kind === "clarification") {
+        await supersedePendingActions(thread.id);
+        await createAssistantAction({
+          threadId: thread.id,
+          sourceMessageId: userMessage.id,
+          actionType: parseResult.partial.intent ?? "unknown",
+          status: "awaiting_clarification",
+          proposedPayload: parseResult.partial as Record<string, unknown>,
+          clarificationState: {
+            intent: parseResult.partial.intent ?? "unknown",
+            partialPayload: parseResult.partial,
+            missingFields: [parseResult.missingField],
+            originatingMessageId: userMessage.id,
+            expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+          },
+        });
+
+        await insertMessage({
+          threadId: thread.id,
+          role: "assistant",
+          messageType: "clarification",
+          content: parseResult.prompt,
+          structuredPayload: {
+            partial: parseResult.partial,
+            missingField: parseResult.missingField,
+          },
+        });
+
+        revalidateAssistantPaths();
+        return { success: true, data: await loadChatState(thread.id) };
+      }
     }
 
     if (parseResult.kind === "command") {
@@ -293,13 +323,13 @@ export async function sendAssistantMessageAction(
         dateRangeKind: telemetry.dateRangeKind,
         weekOffset: telemetry.weekOffset,
       });
-    }
 
-    await processParsedCommand(
-      parseResult.command,
-      thread.id,
-      userMessage.id,
-    );
+      await processParsedCommand(
+        parseResult.command,
+        thread.id,
+        userMessage.id,
+      );
+    }
 
     revalidateAssistantPaths();
     return { success: true, data: await loadChatState(thread.id) };

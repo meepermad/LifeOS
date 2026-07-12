@@ -7,6 +7,8 @@ import {
   isWriteIntent,
 } from "@/lib/assistant/executor";
 import { proposedActionExpiresAt } from "@/lib/assistant/clarification";
+import { buildParseOptionsForUser } from "@/lib/assistant/build-parse-options";
+import { tryAiIntentRouter } from "@/lib/assistant/ai-intent-router/router";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthenticatedShortcutDevice } from "@/lib/shortcuts/auth";
 import type { ShortcutCommandResponse } from "@/lib/shortcuts/schemas";
@@ -59,7 +61,34 @@ export async function processShortcutCommand(input: {
   command: string;
   timezone?: string;
 }): Promise<ShortcutCommandResponse> {
-  const parseResult = parseCommand(input.command);
+  const parseOptions = await buildParseOptionsForUser(
+    input.device.userId,
+    input.timezone,
+  );
+  let parseResult = parseCommand(input.command, new Date(), parseOptions);
+
+  if (parseResult.kind === "clarification") {
+    return {
+      status: "error",
+      code: "CLARIFICATION_REQUIRED",
+      spokenText: sanitizeSpokenText(parseResult.prompt),
+      displayText: "Clarification required.",
+      openUrl: null,
+    };
+  }
+
+  if (parseResult.kind === "unknown") {
+    const aiResult = await tryAiIntentRouter({
+      message: parseResult.raw,
+      userId: input.device.userId,
+      parseOptions,
+      maxLength: 500,
+    });
+
+    if (aiResult.attempted) {
+      parseResult = aiResult.parseResult;
+    }
+  }
 
   if (parseResult.kind === "clarification") {
     return {

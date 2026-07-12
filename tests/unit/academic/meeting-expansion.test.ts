@@ -64,6 +64,57 @@ describe("meeting-expansion", () => {
     });
     expect(result.suppressed).toBe(true);
   });
+
+  it("applies altered schedule over break for specific course", () => {
+    const breakEx: AcademicExceptionRow = {
+      id: "e1",
+      user_id: "u",
+      academic_term_id: "t1",
+      exception_type: "break",
+      start_date: "2026-08-24",
+      end_date: "2026-08-31",
+      course_id: null,
+      suppresses_classes: true,
+      blocks_availability: false,
+      informational_only: false,
+      title: "Break",
+      notes: null,
+      altered_schedule: null,
+      preset_key: null,
+      is_user_modified: false,
+      created_at: "",
+      updated_at: "",
+    };
+    const altered: AcademicExceptionRow = {
+      id: "e2",
+      user_id: "u",
+      academic_term_id: "t1",
+      exception_type: "altered_schedule",
+      start_date: "2026-08-24",
+      end_date: "2026-08-24",
+      course_id: meeting.course_id,
+      suppresses_classes: false,
+      blocks_availability: false,
+      informational_only: false,
+      title: "Review Session",
+      notes: null,
+      altered_schedule: { startTime: "14:00", endTime: "15:00" },
+      preset_key: null,
+      is_user_modified: false,
+      created_at: "",
+      updated_at: "",
+    };
+
+    const occurrences = expandClassMeeting({
+      meeting,
+      courseTitle: "Algorithms",
+      courseCode: "CIS 501",
+      exceptions: [breakEx, altered],
+    });
+    const onAlteredDay = occurrences.filter((o) => o.dateKey === "2026-08-24");
+    expect(onAlteredDay).toHaveLength(1);
+    expect(onAlteredDay[0]?.startAt).toBe("2026-08-24T19:00:00.000Z");
+  });
 });
 
 describe("semester-reconciliation", () => {

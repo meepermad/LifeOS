@@ -16,8 +16,10 @@ import { ProfileSettingsForm } from "@/components/settings/profile-settings";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { SectionCard } from "@/components/forms/ui";
 import { ShortcutDeviceSettings } from "@/components/settings/shortcut-device-settings";
+import { AssistantLanguageFallbackSettings } from "@/components/settings/assistant-language-fallback-settings";
 import { listShortcutDevices } from "@/lib/data/shortcut-devices";
 import { getServerEnv } from "@/lib/security/env";
+import { getAiIntentRouterStatus } from "@/lib/assistant/ai-intent-router/router";
 
 export default async function SettingsPage() {
   const user = await requireAllowedUser();
@@ -33,6 +35,7 @@ export default async function SettingsPage() {
       listShortcutDevices(),
     ]);
   const shortcutApiUrl = `${getServerEnv().NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? ""}/api/shortcuts/command`;
+  const aiIntentRouterStatus = await getAiIntentRouterStatus(user.id);
   const microsoftConnection = microsoftEnabled
     ? await getMicrosoftConnectionSafe()
     : null;
@@ -150,6 +153,13 @@ export default async function SettingsPage() {
         >
           Manage imports →
         </Link>
+      </SectionCard>
+
+      <SectionCard
+        title="Assistant language fallback"
+        description="Optional AI classification when deterministic parsing cannot understand a command."
+      >
+        <AssistantLanguageFallbackSettings initialStatus={aiIntentRouterStatus} />
       </SectionCard>
 
       <SectionCard

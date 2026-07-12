@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { ConfigurationError } from "@/lib/errors/app-error";
 import { assertMicrosoftIntegrationEnabled } from "@/lib/integrations/microsoft/feature-flag";
+import {
+  assertAiIntentRouterEnabled,
+  isAiIntentRouterEnabled,
+} from "@/lib/assistant/ai-intent-router/feature-flag";
 
 function isLocalDevelopmentUrl(url: string): boolean {
   try {
@@ -102,6 +106,14 @@ const serverEnvSchema = supabasePublicEnvSchema.extend({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: optionalTrimmedString(),
   VAPID_PRIVATE_KEY: optionalTrimmedString(),
   VAPID_SUBJECT: optionalTrimmedString(),
+  AI_INTENT_ROUTER_ENABLED: optionalTrimmedString(),
+  AI_INTENT_PROVIDER: optionalTrimmedString(),
+  CLOUDFLARE_ACCOUNT_ID: optionalTrimmedString(),
+  CLOUDFLARE_AI_API_TOKEN: optionalTrimmedString(),
+  CLOUDFLARE_AI_MODEL: optionalTrimmedString(),
+  AI_INTENT_ROUTER_DAILY_CAP: optionalTrimmedString(),
+  AI_INTENT_ROUTER_TIMEOUT_MS: optionalTrimmedString(),
+  AI_INTENT_ROUTER_MIN_CONFIDENCE: optionalTrimmedString(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -170,6 +182,14 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+    AI_INTENT_ROUTER_ENABLED: process.env.AI_INTENT_ROUTER_ENABLED,
+    AI_INTENT_PROVIDER: process.env.AI_INTENT_PROVIDER,
+    CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_AI_API_TOKEN: process.env.CLOUDFLARE_AI_API_TOKEN,
+    CLOUDFLARE_AI_MODEL: process.env.CLOUDFLARE_AI_MODEL,
+    AI_INTENT_ROUTER_DAILY_CAP: process.env.AI_INTENT_ROUTER_DAILY_CAP,
+    AI_INTENT_ROUTER_TIMEOUT_MS: process.env.AI_INTENT_ROUTER_TIMEOUT_MS,
+    AI_INTENT_ROUTER_MIN_CONFIDENCE: process.env.AI_INTENT_ROUTER_MIN_CONFIDENCE,
   });
 
   if (!result.success) {
@@ -322,5 +342,65 @@ export function getMicrosoftConfig(): MicrosoftConfig {
     tenantId,
     redirectUri,
     authority: `https://login.microsoftonline.com/${tenantId}`,
+  };
+}
+
+export type AiIntentRouterConfig = {
+  provider: "cloudflare";
+  accountId: string;
+  apiToken: string;
+  model: string;
+  dailyCap: number;
+  timeoutMs: number;
+  minConfidence: number;
+};
+
+function parsePositiveInt(
+  raw: string | undefined,
+  fallback: number,
+): number {
+  if (!raw?.trim()) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseConfidence(raw: string | undefined, fallback: number): number {
+  if (!raw?.trim()) return fallback;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return fallback;
+  return parsed;
+}
+
+export function getAiIntentRouterConfig(): AiIntentRouterConfig | null {
+  if (!isAiIntentRouterEnabled()) {
+    return null;
+  }
+
+  assertAiIntentRouterEnabled();
+  const env = getServerEnv();
+  const provider = (env.AI_INTENT_PROVIDER?.trim().toLowerCase() ?? "cloudflare") as
+    | "cloudflare";
+
+  if (provider !== "cloudflare") {
+    return null;
+  }
+
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
+  const apiToken = env.CLOUDFLARE_AI_API_TOKEN?.trim();
+  const model =
+    env.CLOUDFLARE_AI_MODEL?.trim() || "@cf/meta/llama-3.1-8b-instruct";
+
+  if (!accountId || !apiToken) {
+    return null;
+  }
+
+  return {
+    provider,
+    accountId,
+    apiToken,
+    model,
+    dailyCap: parsePositiveInt(env.AI_INTENT_ROUTER_DAILY_CAP, 50),
+    timeoutMs: parsePositiveInt(env.AI_INTENT_ROUTER_TIMEOUT_MS, 8000),
+    minConfidence: parseConfidence(env.AI_INTENT_ROUTER_MIN_CONFIDENCE, 0.7),
   };
 }

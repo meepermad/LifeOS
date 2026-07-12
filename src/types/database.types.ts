@@ -292,6 +292,81 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_intent_router_daily_usage: {
+        Row: {
+          created_at: string
+          id: string
+          request_count: number
+          updated_at: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          usage_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_intent_router_telemetry: {
+        Row: {
+          confidence_bucket: string | null
+          created_at: string
+          error_category: string | null
+          id: string
+          latency_bucket_ms: string | null
+          model: string
+          provider: string
+          retention_expires_at: string
+          schema_version: number
+          selected_intent: string | null
+          status: string
+          usage_units: number | null
+          user_id: string
+        }
+        Insert: {
+          confidence_bucket?: string | null
+          created_at?: string
+          error_category?: string | null
+          id?: string
+          latency_bucket_ms?: string | null
+          model: string
+          provider: string
+          retention_expires_at?: string
+          schema_version?: number
+          selected_intent?: string | null
+          status: string
+          usage_units?: number | null
+          user_id: string
+        }
+        Update: {
+          confidence_bucket?: string | null
+          created_at?: string
+          error_category?: string | null
+          id?: string
+          latency_bucket_ms?: string | null
+          model?: string
+          provider?: string
+          retention_expires_at?: string
+          schema_version?: number
+          selected_intent?: string | null
+          status?: string
+          usage_units?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assistant_parser_outcomes: {
         Row: {
           clarification_reason: string | null

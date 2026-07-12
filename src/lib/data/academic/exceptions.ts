@@ -14,7 +14,8 @@ export async function listExceptionsForTerm(
     .select("*")
     .eq("academic_term_id", termId)
     .eq("user_id", user.id)
-    .order("start_date");
+    .order("start_date")
+    .order("id");
 
   if (error) {
     throw new DatabaseError("Failed to load academic exceptions");

@@ -67,28 +67,42 @@ const supabasePublicEnvSchema = z.object({
 
 const publicEnvSchema = basePublicEnvSchema.superRefine(refineAppUrl);
 
-const serverEnvSchema = supabasePublicEnvSchema
-  .extend({
-    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-    APP_ALLOWED_EMAIL: z.string().email(),
-    TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
-    CANVAS_ALLOWED_HOSTNAMES: z.string().min(1).optional(),
-    CRON_SECRET: z.string().min(1).optional(),
-    MICROSOFT_INTEGRATION_ENABLED: z.string().optional(),
-    MICROSOFT_CLIENT_ID: z.string().optional(),
-    MICROSOFT_CLIENT_SECRET: z.string().optional(),
-    MICROSOFT_TENANT_ID: z.string().optional(),
-    MICROSOFT_REDIRECT_URI: z.string().url().optional(),
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
-    VAPID_PRIVATE_KEY: z.string().optional(),
-    VAPID_SUBJECT: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.NEXT_PUBLIC_APP_URL) {
-      refineAppUrl({ NEXT_PUBLIC_APP_URL: data.NEXT_PUBLIC_APP_URL }, ctx);
+function optionalTrimmedString() {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined;
     }
-  });
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().optional());
+}
+
+function optionalTrimmedUrl() {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().url().optional());
+}
+
+const serverEnvSchema = supabasePublicEnvSchema.extend({
+  NEXT_PUBLIC_APP_URL: optionalTrimmedUrl(),
+  SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString(),
+  APP_ALLOWED_EMAIL: z.string().email(),
+  TOKEN_ENCRYPTION_KEY: optionalTrimmedString(),
+  CANVAS_ALLOWED_HOSTNAMES: optionalTrimmedString(),
+  CRON_SECRET: optionalTrimmedString(),
+  MICROSOFT_INTEGRATION_ENABLED: optionalTrimmedString(),
+  MICROSOFT_CLIENT_ID: optionalTrimmedString(),
+  MICROSOFT_CLIENT_SECRET: optionalTrimmedString(),
+  MICROSOFT_TENANT_ID: optionalTrimmedString(),
+  MICROSOFT_REDIRECT_URI: optionalTrimmedUrl(),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optionalTrimmedString(),
+  VAPID_PRIVATE_KEY: optionalTrimmedString(),
+  VAPID_SUBJECT: optionalTrimmedString(),
+});
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
 export type SupabasePublicEnv = z.infer<typeof supabasePublicEnvSchema>;
@@ -140,7 +154,7 @@ export function getServerEnv(): ServerEnv {
     return cachedServerEnv;
   }
 
-  cachedServerEnv = serverEnvSchema.parse({
+  const result = serverEnvSchema.safeParse({
     ...getSupabasePublicEnv(),
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -158,7 +172,17 @@ export function getServerEnv(): ServerEnv {
     VAPID_SUBJECT: process.env.VAPID_SUBJECT,
   });
 
+  if (!result.success) {
+    throw new ConfigurationError("Server environment is not configured");
+  }
+
+  cachedServerEnv = result.data;
   return cachedServerEnv;
+}
+
+export function getOptionalVapidPublicKey(): string | null {
+  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  return key ? key : null;
 }
 
 export function getAllowedEmail(): string {

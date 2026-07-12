@@ -7,7 +7,7 @@ import { getMicrosoftConnectionSafe } from "@/lib/data/microsoft-connections";
 import { getProfile } from "@/lib/data/bootstrap";
 import { getPlanningPreferences } from "@/lib/data/preferences";
 import { listUserDevices } from "@/lib/data/push-subscriptions";
-import { getServerEnv } from "@/lib/security/env";
+import { getOptionalVapidPublicKey } from "@/lib/security/env";
 import { isMicrosoftIntegrationEnabled } from "@/lib/integrations/microsoft/feature-flag";
 import { AvailabilitySettings } from "@/components/settings/availability-settings";
 import { CalendarsSettings } from "@/components/settings/calendars-settings";
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
     ? await getMicrosoftConnectionSafe()
     : null;
 
-  const vapidPublicKey = getServerEnv().NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null;
+  const vapidPublicKey = getOptionalVapidPublicKey();
 
   return (
     <div className="space-y-6">

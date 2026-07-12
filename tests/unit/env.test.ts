@@ -89,3 +89,44 @@ describe("optional Microsoft variables while disabled", () => {
     expect(() => envModule.getMicrosoftConfig()).toThrow();
   });
 });
+
+describe("getServerEnv optional integration variables", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("treats empty optional env values as unset", async () => {
+    const envModule = await loadEnvModule("production");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000");
+    vi.stubEnv("MICROSOFT_REDIRECT_URI", "");
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "");
+    vi.stubEnv("CRON_SECRET", "");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "");
+
+    expect(() => envModule.getServerEnv()).not.toThrow();
+    const env = envModule.getServerEnv();
+    expect(env.MICROSOFT_REDIRECT_URI).toBeUndefined();
+    expect(env.TOKEN_ENCRYPTION_KEY).toBeUndefined();
+    expect(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY).toBeUndefined();
+  });
+});
+
+describe("getOptionalVapidPublicKey", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("returns null when VAPID public key is unset", async () => {
+    const envModule = await loadEnvModule("test");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "");
+    expect(envModule.getOptionalVapidPublicKey()).toBeNull();
+  });
+
+  it("returns the trimmed VAPID public key without loading full server env", async () => {
+    const envModule = await loadEnvModule("test");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "  public-key  ");
+    expect(envModule.getOptionalVapidPublicKey()).toBe("public-key");
+  });
+});

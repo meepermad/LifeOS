@@ -1,6 +1,11 @@
 import { DatabaseError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
+import {
+  buildSyncStatePersistenceError,
+  logSyncStateDatabaseError,
+  SYNC_STATE_CALENDAR_CONFLICT_TARGET,
+} from "@/lib/integrations/sync-state-persistence";
 import type { SyncStateRow } from "@/types/domain";
 
 export async function getSyncStateForConnection(
@@ -48,13 +53,14 @@ export async function upsertSyncState(input: {
         sync_window_end: input.syncWindowEnd,
         last_synced_at: now,
       },
-      { onConflict: "connection_id" },
+      { onConflict: SYNC_STATE_CALENDAR_CONFLICT_TARGET },
     )
     .select("*")
     .single();
 
   if (error || !data) {
-    throw new DatabaseError("Failed to update sync state");
+    logSyncStateDatabaseError("canvas", error);
+    throw new DatabaseError(buildSyncStatePersistenceError("canvas", error));
   }
 
   return data;

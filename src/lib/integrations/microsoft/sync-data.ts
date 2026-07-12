@@ -3,6 +3,11 @@ import {
   DatabaseError,
   ValidationError,
 } from "@/lib/errors/app-error";
+import {
+  buildSyncStatePersistenceError,
+  logSyncStateDatabaseError,
+  SYNC_STATE_CALENDAR_CONFLICT_TARGET,
+} from "@/lib/integrations/sync-state-persistence";
 import type { MicrosoftSyncContext, MicrosoftSyncTrigger } from "@/lib/integrations/microsoft/sync-context";
 import type { NormalizedMicrosoftEvent } from "@/lib/integrations/microsoft/schemas";
 import type { ConnectionRow, CalendarRow, SyncStateRow } from "@/types/domain";
@@ -177,12 +182,13 @@ export async function upsertMicrosoftSyncState(
 
   const { data, error } = await ctx.client
     .from("sync_states")
-    .upsert(payload, { onConflict: "calendar_id" })
+    .upsert(payload, { onConflict: SYNC_STATE_CALENDAR_CONFLICT_TARGET })
     .select("*")
     .single();
 
   if (error || !data) {
-    throw new DatabaseError("Failed to update Microsoft sync state");
+    logSyncStateDatabaseError("microsoft", error);
+    throw new DatabaseError(buildSyncStatePersistenceError("microsoft", error));
   }
 
   return data;

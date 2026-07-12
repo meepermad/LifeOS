@@ -1005,6 +1005,10 @@ export type Database = {
           last_successful_push: string
         }[]
       }
+      is_push_endpoint_registered: {
+        Args: { p_endpoint: string }
+        Returns: boolean
+      }
       reject_planning_proposal: {
         Args: { p_proposal_id: string }
         Returns: Json

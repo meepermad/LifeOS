@@ -15,7 +15,7 @@ describe("NotificationStatus", () => {
         isStandalone={false}
         isIosBrowser={false}
         permission="unsupported"
-        currentDeviceActive={false}
+        deviceSubscriptionState="unsupported"
         devices={[]}
       />,
     );
@@ -30,7 +30,7 @@ describe("NotificationStatus", () => {
         isStandalone={true}
         isIosBrowser={false}
         permission="denied"
-        currentDeviceActive={false}
+        deviceSubscriptionState="not_subscribed"
         devices={[]}
       />,
     );
@@ -45,7 +45,7 @@ describe("NotificationStatus", () => {
         isStandalone={false}
         isIosBrowser={true}
         permission="default"
-        currentDeviceActive={false}
+        deviceSubscriptionState="not_subscribed"
         devices={[]}
       />,
     );
@@ -60,7 +60,7 @@ describe("NotificationStatus", () => {
         isStandalone={true}
         isIosBrowser={false}
         permission="granted"
-        currentDeviceActive={true}
+        deviceSubscriptionState="registered"
         devices={[
           {
             id: "d1",
@@ -74,7 +74,7 @@ describe("NotificationStatus", () => {
       />,
     );
     expect(screen.getByText("This device")).toBeInTheDocument();
-    expect(screen.getByText(/Desktop browser/)).toBeInTheDocument();
     expect(screen.getAllByText("Active").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Desktop browser/)).toBeInTheDocument();
   });
 });

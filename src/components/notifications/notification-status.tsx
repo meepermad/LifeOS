@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  deviceSubscriptionHint,
+  deviceSubscriptionLabel,
+  type DeviceSubscriptionState,
+} from "@/lib/notifications/subscription-status";
 import type { DeviceSummary } from "@/lib/notifications/schemas";
 
 function permissionLabel(
@@ -28,7 +33,7 @@ export function NotificationStatus({
   isStandalone,
   isIosBrowser,
   permission,
-  currentDeviceActive,
+  deviceSubscriptionState,
   devices,
 }: {
   mounted: boolean;
@@ -37,10 +42,10 @@ export function NotificationStatus({
   isStandalone: boolean;
   isIosBrowser: boolean;
   permission: NotificationPermission | "unsupported" | "checking";
-  currentDeviceActive: boolean;
+  deviceSubscriptionState: DeviceSubscriptionState;
   devices: DeviceSummary[];
 }) {
-  const otherDevices = devices.filter((d) => d.isActive);
+  const deviceHint = deviceSubscriptionHint(deviceSubscriptionState);
 
   return (
     <div className="space-y-3 text-sm">
@@ -70,7 +75,9 @@ export function NotificationStatus({
         <div className="flex justify-between gap-4">
           <dt className="text-muted">This device</dt>
           <dd className="text-right text-foreground">
-            {currentDeviceActive ? "Active" : "Not subscribed"}
+            {mounted
+              ? deviceSubscriptionLabel(deviceSubscriptionState)
+              : "Checking…"}
           </dd>
         </div>
       </dl>
@@ -100,7 +107,13 @@ export function NotificationStatus({
         </p>
       )}
 
-      {otherDevices.length > 0 && (
+      {deviceHint && (
+        <p className="rounded-lg border border-border/70 bg-surface/50 p-3 text-foreground/80">
+          {deviceHint}
+        </p>
+      )}
+
+      {devices.some((d) => d.isActive) && (
         <div>
           <p className="mb-2 text-muted">Saved devices</p>
           <ul className="space-y-1">

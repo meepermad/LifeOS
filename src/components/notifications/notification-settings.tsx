@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
+  checkEndpointRegistrationAction,
   deactivateDeviceAction,
   disableCurrentDeviceAction,
   enableNotificationsAction,
@@ -18,7 +19,16 @@ import {
 } from "@/components/forms/ui";
 import { DAY_NAMES } from "@/lib/constants";
 import { splitTimeForForm } from "@/lib/dates/timezone";
-import { urlBase64ToUint8Array } from "@/lib/notifications/vapid-client";
+import {
+  logPushEnableFailure,
+  mapPersistActionFailure,
+  runPushEnableBrowserFlow,
+} from "@/lib/notifications/push-enable-flow";
+import {
+  canEnableForDeviceState,
+  reconcileDeviceSubscriptionState,
+} from "@/lib/notifications/subscription-status";
+import { decodeVapidPublicKey } from "@/lib/notifications/vapid-client";
 import {
   detectBrowserPushSupport,
   type PushSupportResult,
@@ -54,6 +64,7 @@ export function NotificationSettings({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
+  const [endpointRegisteredInDb, setEndpointRegisteredInDb] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [pushSupport, setPushSupport] = useState<PushSupportResult>({
     supported: false,
@@ -68,13 +79,28 @@ export function NotificationSettings({
   const isIosBrowser = mounted && isIos && !isStandalone;
 
   const refreshSubscription = useCallback(async () => {
-    if (!mounted || !pushSupport.supported) return;
+    if (!mounted || !pushSupport.supported) {
+      setCurrentEndpoint(null);
+      setEndpointRegisteredInDb(false);
+      return;
+    }
+
     try {
       const registration = await navigator.serviceWorker.ready;
       const sub = await registration.pushManager.getSubscription();
-      setCurrentEndpoint(sub?.endpoint ?? null);
+      const endpoint = sub?.endpoint ?? null;
+      setCurrentEndpoint(endpoint);
+
+      if (!endpoint) {
+        setEndpointRegisteredInDb(false);
+        return;
+      }
+
+      const { registered } = await checkEndpointRegistrationAction(endpoint);
+      setEndpointRegisteredInDb(registered);
     } catch {
       setCurrentEndpoint(null);
+      setEndpointRegisteredInDb(false);
     }
   }, [mounted, pushSupport.supported]);
 
@@ -92,12 +118,19 @@ export function NotificationSettings({
   useEffect(() => {
     if (!mounted || !pushSupport.supported) return;
     void refreshSubscription();
-  }, [mounted, pushSupport.supported, refreshSubscription]);
+  }, [mounted, pushSupport.supported, refreshSubscription, devices]);
 
-  const currentDeviceActive = useMemo(() => {
-    if (!currentEndpoint) return false;
-    return devices.some((d) => d.isActive);
-  }, [currentEndpoint, devices]);
+  const deviceSubscriptionState = useMemo(
+    () =>
+      reconcileDeviceSubscriptionState({
+        supported: isSupported,
+        browserHasSubscription: !!currentEndpoint,
+        endpointRegisteredInDb,
+      }),
+    [isSupported, currentEndpoint, endpointRegisteredInDb],
+  );
+
+  const currentDeviceActive = deviceSubscriptionState === "registered";
 
   async function handleEnable() {
     if (!isSupported || !vapidPublicKey) {
@@ -112,58 +145,58 @@ export function NotificationSettings({
     setError(null);
     setMessage(null);
 
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    if (result !== "granted") {
-      setError("Notification permission was not granted");
+    const browserResult = await runPushEnableBrowserFlow(
+      {
+        supported: pushSupport.supported,
+        vapidPublicKey,
+        serviceWorker: navigator.serviceWorker,
+        notification:
+          typeof Notification !== "undefined"
+            ? {
+                permission: Notification.permission,
+                requestPermission: () => Notification.requestPermission(),
+              }
+            : undefined,
+      },
+      decodeVapidPublicKey,
+    );
+
+    if (!browserResult.ok) {
+      logPushEnableFailure(browserResult);
+      setError(browserResult.message);
+      if (browserResult.stage === "permission") {
+        setPermission(Notification.permission);
+      }
       return;
     }
 
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      let subscription = await registration.pushManager.getSubscription();
+    setPermission(Notification.permission);
 
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+    startTransition(async () => {
+      const actionResult = await enableNotificationsAction({
+        endpoint: browserResult.endpoint,
+        keys: browserResult.keys,
+        contentEncoding: browserResult.contentEncoding,
+        userAgent: navigator.userAgent,
+        isStandalone,
+      });
+
+      if (!actionResult.success) {
+        const failure = mapPersistActionFailure({
+          error: actionResult.error,
+          errorCode: actionResult.errorCode,
+          httpStatus: actionResult.httpStatus,
         });
-      }
-
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        setError("Failed to read push subscription");
+        logPushEnableFailure(failure);
+        setError(actionResult.error);
         return;
       }
 
-      startTransition(async () => {
-        const actionResult = await enableNotificationsAction({
-          endpoint: json.endpoint!,
-          keys: {
-            p256dh: json.keys!.p256dh!,
-            auth: json.keys!.auth!,
-          },
-          contentEncoding:
-            "contentEncoding" in subscription
-              ? (subscription as PushSubscription & { contentEncoding?: string })
-                  .contentEncoding ?? null
-              : null,
-          userAgent: navigator.userAgent,
-          isStandalone,
-        });
-
-        if (!actionResult.success) {
-          setError(actionResult.error);
-          return;
-        }
-
-        setMessage("Notifications enabled on this device");
-        setCurrentEndpoint(json.endpoint!);
-        router.refresh();
-      });
-    } catch {
-      setError("Failed to enable notifications");
-    }
+      setMessage("Notifications enabled on this device");
+      setCurrentEndpoint(browserResult.endpoint);
+      setEndpointRegisteredInDb(true);
+      router.refresh();
+    });
   }
 
   async function handleDisable() {
@@ -188,6 +221,7 @@ export function NotificationSettings({
           }
           setMessage("This device has been unsubscribed");
           setCurrentEndpoint(null);
+          setEndpointRegisteredInDb(false);
           router.refresh();
         });
       }
@@ -265,7 +299,8 @@ export function NotificationSettings({
     isSupported &&
     !isIosBrowser &&
     permission !== "denied" &&
-    !!vapidPublicKey;
+    !!vapidPublicKey &&
+    canEnableForDeviceState(deviceSubscriptionState);
 
   return (
     <div className="space-y-6">
@@ -276,7 +311,7 @@ export function NotificationSettings({
         isStandalone={isStandalone}
         isIosBrowser={isIosBrowser}
         permission={permission}
-        currentDeviceActive={currentDeviceActive}
+        deviceSubscriptionState={deviceSubscriptionState}
         devices={devices}
       />
 
@@ -286,7 +321,6 @@ export function NotificationSettings({
             type="button"
             onClick={() => void handleEnable()}
             loading={isPending}
-            disabled={currentDeviceActive}
           >
             Enable notifications
           </PrimaryButton>

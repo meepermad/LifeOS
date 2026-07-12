@@ -3,6 +3,7 @@ import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
 import {
   inferDeviceName,
+  isEndpointRegistered,
   listDeviceSummaries,
   registerPushSubscription,
   deactivateByEndpoint,
@@ -47,6 +48,14 @@ export async function listUserDevices(): Promise<DeviceSummary[]> {
   await requireAllowedUser();
   const supabase = await createClient();
   return listDeviceSummaries(supabase);
+}
+
+export async function isCurrentEndpointRegistered(
+  endpoint: string,
+): Promise<boolean> {
+  await requireAllowedUser();
+  const supabase = await createClient();
+  return isEndpointRegistered(supabase, endpoint);
 }
 
 export async function deactivateCurrentDevice(

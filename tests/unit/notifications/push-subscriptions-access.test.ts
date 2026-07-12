@@ -3,9 +3,11 @@ import {
   listDeviceSummaries,
   listActiveSubscriptions,
   registerPushSubscription,
+  isEndpointRegistered,
   deactivateById,
   deactivateByEndpoint,
 } from "@/lib/notifications/subscriptions";
+import { AuthenticationError, DatabaseError } from "@/lib/errors/app-error";
 
 function createSessionClient() {
   const rpc = vi.fn();
@@ -92,6 +94,56 @@ describe("push subscription data exposure", () => {
     expect(summary).not.toHaveProperty("endpoint");
     expect(summary).not.toHaveProperty("p256dh");
     expect(summary).not.toHaveProperty("auth");
+  });
+
+  it("maps RPC permission failures to safe application errors", async () => {
+    const { client, rpc } = createSessionClient();
+    rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: "42501",
+        message: "permission denied for table push_subscriptions",
+      },
+    });
+
+    await expect(
+      registerPushSubscription(client, {
+        endpoint: "https://push.example.com/secret",
+        p256dh: "secret-p256dh",
+        auth: "secret-auth",
+      }),
+    ).rejects.toBeInstanceOf(DatabaseError);
+  });
+
+  it("maps RPC authentication failures to session expiry errors", async () => {
+    const { client, rpc } = createSessionClient();
+    rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: "42501",
+        message: "Not authenticated",
+      },
+    });
+
+    await expect(
+      registerPushSubscription(client, {
+        endpoint: "https://push.example.com/secret",
+        p256dh: "secret-p256dh",
+        auth: "secret-auth",
+      }),
+    ).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it("checks endpoint registration via RPC", async () => {
+    const { client, rpc } = createSessionClient();
+    rpc.mockResolvedValue({ data: true, error: null });
+
+    await expect(
+      isEndpointRegistered(client, "https://push.example.com/device"),
+    ).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith("is_push_endpoint_registered", {
+      p_endpoint: "https://push.example.com/device",
+    });
   });
 
   it("deactivates devices via RPC", async () => {

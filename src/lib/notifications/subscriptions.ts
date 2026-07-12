@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database.types";
+import { AuthorizationError } from "@/lib/errors/app-error";
+import {
+  logPushSubscriptionPersistenceError,
+  mapPushSubscriptionRpcError,
+} from "@/lib/notifications/push-subscription-errors";
 import type { DeviceSummary } from "@/lib/notifications/schemas";
+import type { Database } from "@/types/database.types";
 import type { PushSubscriptionRow } from "@/types/domain";
 
 type DbClient = SupabaseClient<Database>;
@@ -46,11 +51,34 @@ export async function registerPushSubscription(
     p_content_encoding: input.contentEncoding ?? undefined,
   });
 
-  if (error || !data?.[0]) {
-    throw new Error("Failed to save push subscription");
+  if (error) {
+    logPushSubscriptionPersistenceError(error);
+    throw mapPushSubscriptionRpcError(error);
+  }
+
+  if (!data?.[0]) {
+    throw new AuthorizationError(
+      "LifeOS could not save this device subscription.",
+    );
   }
 
   return mapSafeDeviceRow(data[0]);
+}
+
+/** Authenticated user path — checks whether the current browser endpoint is saved. */
+export async function isEndpointRegistered(
+  client: DbClient,
+  endpoint: string,
+): Promise<boolean> {
+  const { data, error } = await client.rpc("is_push_endpoint_registered", {
+    p_endpoint: endpoint,
+  });
+
+  if (error) {
+    return false;
+  }
+
+  return data === true;
 }
 
 /** Authenticated user path — RPC returns safe columns only. */

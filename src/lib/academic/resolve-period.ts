@@ -9,8 +9,9 @@ export async function resolveAcademicPeriodRange(
   periodKind: string,
 ): Promise<DateRangeRef | null> {
   const terms = await listAcademicTerms();
-  const active = getActiveTerm(terms) ?? getCurrentSemesterTerm(
-    terms,
+  const nonArchived = terms.filter((term) => term.status !== "archived");
+  const active = getActiveTerm(nonArchived) ?? getCurrentSemesterTerm(
+    nonArchived,
     getAppLocalDateKey(nowInAppTimezone()),
   );
   if (!active) return null;

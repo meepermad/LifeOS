@@ -1,21 +1,46 @@
 import {
   extractDatePhrase,
+  inferWeekPhrase,
   parseDateRange,
   type AcademicRangeContext,
 } from "@/lib/dates/range-parser";
 import type { ParseResult } from "@/lib/assistant/intents";
+import type { ParseCommandOptions } from "@/lib/assistant/parse-options";
+import { APP_TIMEZONE } from "@/lib/constants";
 import {
   classifyParaphrase,
   toDateRangeRef,
 } from "@/lib/assistant/paraphrase";
 
+function resolveRange(
+  text: string,
+  options: ParseCommandOptions,
+): ReturnType<typeof parseDateRange> {
+  const now = options.now ?? new Date();
+  const parseOpts = {
+    now,
+    timezone: options.timezone,
+    academicContext: options.academicContext,
+  };
+  const direct = parseDateRange(text, parseOpts);
+  if (direct) return direct;
+
+  const inferred = inferWeekPhrase(text);
+  if (inferred) {
+    return parseDateRange(inferred, parseOpts);
+  }
+
+  return null;
+}
+
 export function parseAcademicCommands(
   text: string,
   now: Date,
-  academicContext?: AcademicRangeContext,
+  options: ParseCommandOptions = {},
 ): ParseResult {
+  const merged: ParseCommandOptions = { ...options, now };
   const category = classifyParaphrase(text);
-  const range = parseDateRange(text, { now, academicContext });
+  const range = resolveRange(text, merged);
 
   if (category === "show_next_class") {
     return { kind: "command", command: { intent: "show_next_class" } };
@@ -26,7 +51,7 @@ export function parseAcademicCommands(
       kind: "command",
       command: {
         intent: "schedule_summary",
-        range: toDateRangeRef(range),
+        range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
       },
     };
   }
@@ -36,7 +61,7 @@ export function parseAcademicCommands(
       kind: "command",
       command: {
         intent: "show_classes",
-        range: toDateRangeRef(range),
+        range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
       },
     };
   }
@@ -50,7 +75,7 @@ export function parseAcademicCommands(
         kind: "command",
         command: {
           intent: "query_academic_period",
-          range: toDateRangeRef(range),
+          range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
           periodKind: phrase,
         },
       };
@@ -76,7 +101,7 @@ export function parseAcademicCommands(
         kind: "command",
         command: {
           intent: "show_due_items",
-          range: toDateRangeRef(range),
+          range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
         },
       };
     }
@@ -89,7 +114,7 @@ export function parseAcademicCommands(
       command: {
         intent: "show_workload",
         scope: "range",
-        range: toDateRangeRef(range),
+        range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
       },
     };
   }
@@ -107,21 +132,28 @@ export function parseAcademicCommands(
       command: {
         intent: "find_availability",
         durationMinutes,
-        startDateKey: toDateRangeRef(range).startDateKey,
-        endDateKey: toDateRangeRef(range).endDateKey,
-        range: toDateRangeRef(range),
+        startDateKey: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE).startDateKey,
+        endDateKey: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE).endDateKey,
+        range: toDateRangeRef(range, options.timezone ?? APP_TIMEZONE),
       },
     };
   }
 
-  if (/\bnext week\b/i.test(text) && /\b(look|going on|rundown|upcoming)\b/i.test(text)) {
-    const weekRange = parseDateRange("next week", { now, academicContext });
+  if (
+    /\bnext week\b/i.test(text) &&
+    /\b(look|going on|rundown|upcoming)\b/i.test(text)
+  ) {
+    const weekRange = parseDateRange("next week", {
+      now,
+      timezone: options.timezone,
+      academicContext: options.academicContext,
+    });
     if (weekRange) {
       return {
         kind: "command",
         command: {
           intent: "schedule_summary",
-          range: toDateRangeRef(weekRange),
+          range: toDateRangeRef(weekRange, options.timezone ?? APP_TIMEZONE),
         },
       };
     }
@@ -131,5 +163,7 @@ export function parseAcademicCommands(
 }
 
 export function extractRecognizedDatePhrase(text: string): string | null {
-  return extractDatePhrase(text);
+  return extractDatePhrase(text) ?? inferWeekPhrase(text);
 }
+
+export type { AcademicRangeContext };

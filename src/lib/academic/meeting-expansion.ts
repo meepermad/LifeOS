@@ -70,8 +70,11 @@ export function expandClassMeeting(input: {
   courseTitle: string;
   courseCode: string;
   exceptions: AcademicExceptionRow[];
+  termClassesStart?: string;
+  termClassesEnd?: string;
 }): ExpandedClassOccurrence[] {
-  const { meeting, courseTitle, courseCode, exceptions } = input;
+  const { meeting, courseTitle, courseCode, exceptions, termClassesStart, termClassesEnd } =
+    input;
   const title =
     courseCode.trim().length > 0
       ? `${courseCode} — ${courseTitle}`
@@ -79,10 +82,18 @@ export function expandClassMeeting(input: {
   const occurrences: ExpandedClassOccurrence[] = [];
   const daySet = new Set(meeting.days_of_week);
 
-  for (const dateKey of dateKeysBetween(
-    meeting.effective_start_date,
-    meeting.effective_end_date,
-  )) {
+  const rangeStart =
+    termClassesStart && termClassesStart > meeting.effective_start_date
+      ? termClassesStart
+      : meeting.effective_start_date;
+  const rangeEnd =
+    termClassesEnd && termClassesEnd < meeting.effective_end_date
+      ? termClassesEnd
+      : meeting.effective_end_date;
+
+  if (rangeStart > rangeEnd) return [];
+
+  for (const dateKey of dateKeysBetween(rangeStart, rangeEnd)) {
     const localDate = parse(dateKey, "yyyy-MM-dd", new Date());
     const dayOfWeek = getDay(localDate);
     if (!daySet.has(dayOfWeek)) continue;
@@ -149,6 +160,8 @@ export function expandAllMeetings(input: {
     courseCode: string;
   }>;
   exceptions: AcademicExceptionRow[];
+  termClassesStart?: string;
+  termClassesEnd?: string;
 }): ExpandedClassOccurrence[] {
   return input.meetings.flatMap((entry) =>
     expandClassMeeting({
@@ -156,6 +169,8 @@ export function expandAllMeetings(input: {
       courseTitle: entry.courseTitle,
       courseCode: entry.courseCode,
       exceptions: input.exceptions,
+      termClassesStart: input.termClassesStart,
+      termClassesEnd: input.termClassesEnd,
     }),
   );
 }

@@ -9,6 +9,7 @@ import {
 import {
   parseAcademicCommands,
 } from "@/lib/assistant/academic-parser";
+import type { ParseCommandOptions } from "@/lib/assistant/parse-options";
 import {
   parseAddWorkShift,
   parseCopyWorkSchedule,
@@ -206,6 +207,14 @@ function parseGeneratePlan(text: string): ParseResult {
 
 function parseCreateEvent(text: string, now: Date): ParseResult {
   const lower = text.toLowerCase();
+  if (
+    /\bwhat\b.+\bschedule\b/i.test(lower) ||
+    /\bschedule like\b/i.test(lower) ||
+    /\bshow\b.+\bschedule\b/i.test(lower)
+  ) {
+    return { kind: "unknown", raw: text };
+  }
+
   const isEvent =
     /\b(schedule|appointment|meeting|dinner|lunch|add)\b/.test(lower);
 
@@ -459,9 +468,11 @@ function parseRegeneratePlan(text: string): ParseResult {
 export function parseCommand(
   text: string,
   now = new Date(),
+  options: ParseCommandOptions = {},
 ): ParseResult {
   const normalized = normalizeInput(text);
   const lower = normalized.toLowerCase();
+  const mergedOptions: ParseCommandOptions = { ...options, now };
 
   if (lower === "help") {
     return { kind: "command", command: { intent: "help" } };
@@ -471,30 +482,30 @@ export function parseCommand(
     return { kind: "command", command: { intent: "clear_chat" } };
   }
 
-  const parsers: Array<(t: string, n: Date) => ParseResult> = [
-    parseRegeneratePlan,
-    parseAcceptProposals,
-    parseRejectProposals,
-    parseCopyWorkSchedule,
-    parseSetWorkSchedule,
-    parseAddWorkShift,
-    parseUpdateWorkShift,
-    parseDeleteWorkShift,
-    parseWorkOffDay,
-    parseShowWorkSchedule,
-    parseShowWorkHours,
-    parseCompleteTask,
-    parseCreateTask,
-    parseCreateEvent,
-    parseAvailability,
-    parseAcademicCommands,
-    parseAgenda,
-    parseWorkload,
-    parseGeneratePlan,
+  const parsers: Array<(t: string, n: Date, o: ParseCommandOptions) => ParseResult> = [
+    (t) => parseRegeneratePlan(t),
+    (t) => parseAcceptProposals(t),
+    (t) => parseRejectProposals(t),
+    (t) => parseCopyWorkSchedule(t),
+    (t, n) => parseSetWorkSchedule(t, n),
+    (t, n) => parseAddWorkShift(t, n),
+    (t, n) => parseUpdateWorkShift(t, n),
+    (t, n) => parseDeleteWorkShift(t, n),
+    (t, n) => parseWorkOffDay(t, n),
+    (t, n) => parseShowWorkSchedule(t, n),
+    (t) => parseShowWorkHours(t),
+    (t) => parseCompleteTask(t),
+    (t, n) => parseCreateTask(t, n),
+    (t, n) => parseCreateEvent(t, n),
+    (t, n) => parseAvailability(t, n),
+    (t, n, o) => parseAcademicCommands(t, n, o),
+    (t, n) => parseAgenda(t, n),
+    (t, n) => parseWorkload(t, n),
+    (t) => parseGeneratePlan(t),
   ];
 
   for (const parser of parsers) {
-    const result = parser(normalized, now);
+    const result = parser(normalized, now, mergedOptions);
     if (result.kind !== "unknown") {
       return result;
     }

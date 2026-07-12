@@ -296,28 +296,121 @@ export type Database = {
         Row: {
           clarification_reason: string | null
           created_at: string
+          date_range_kind: string | null
           id: string
           normalized_intent: string | null
-          recognized_date_phrase: string | null
+          retention_expires_at: string
           success: boolean
           user_id: string
+          week_offset: number | null
         }
         Insert: {
           clarification_reason?: string | null
           created_at?: string
+          date_range_kind?: string | null
           id?: string
           normalized_intent?: string | null
-          recognized_date_phrase?: string | null
+          retention_expires_at?: string
           success: boolean
           user_id: string
+          week_offset?: number | null
         }
         Update: {
           clarification_reason?: string | null
           created_at?: string
+          date_range_kind?: string | null
           id?: string
           normalized_intent?: string | null
-          recognized_date_phrase?: string | null
+          retention_expires_at?: string
           success?: boolean
+          user_id?: string
+          week_offset?: number | null
+        }
+        Relationships: []
+      }
+      canvas_class_link_decisions: {
+        Row: {
+          academic_term_id: string
+          candidate_fingerprint: string
+          canvas_course_id: string | null
+          class_meeting_id: string | null
+          created_at: string
+          id: string
+          resolution_mode: string
+          reversed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          academic_term_id: string
+          candidate_fingerprint: string
+          canvas_course_id?: string | null
+          class_meeting_id?: string | null
+          created_at?: string
+          id?: string
+          resolution_mode: string
+          reversed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          academic_term_id?: string
+          candidate_fingerprint?: string
+          canvas_course_id?: string | null
+          class_meeting_id?: string | null
+          created_at?: string
+          id?: string
+          resolution_mode?: string
+          reversed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      canvas_class_link_uids: {
+        Row: {
+          canvas_external_event_id: string
+          created_at: string
+          decision_id: string
+          id: string
+        }
+        Insert: {
+          canvas_external_event_id: string
+          created_at?: string
+          decision_id: string
+          id?: string
+        }
+        Update: {
+          canvas_external_event_id?: string
+          created_at?: string
+          decision_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      canvas_suppressed_occurrences: {
+        Row: {
+          canvas_external_event_id: string
+          class_meeting_id: string
+          decision_id: string
+          id: string
+          reversed_at: string | null
+          suppressed_at: string
+          user_id: string
+        }
+        Insert: {
+          canvas_external_event_id: string
+          class_meeting_id: string
+          decision_id: string
+          id?: string
+          reversed_at?: string | null
+          suppressed_at?: string
+          user_id: string
+        }
+        Update: {
+          canvas_external_event_id?: string
+          class_meeting_id?: string
+          decision_id?: string
+          id?: string
+          reversed_at?: string | null
+          suppressed_at?: string
           user_id?: string
         }
         Relationships: []

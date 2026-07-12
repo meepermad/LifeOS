@@ -84,7 +84,9 @@ export async function processShortcutCommand(input: {
   const validated = validateParsedCommand(parseResult.command);
 
   if (isReadOnlyIntent(validated)) {
-    const result = await executeReadOnly(validated);
+    const result = await executeReadOnly(validated, {
+      userId: input.device.userId,
+    });
     const spoken = toSpokenResponse({
       content: result.content,
       detailLevel: input.device.spokenDetailLevel,

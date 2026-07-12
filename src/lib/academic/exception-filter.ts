@@ -43,7 +43,9 @@ export function evaluateExceptionForMeeting(input: {
       (exception.exception_type === "no_classes" ||
         exception.exception_type === "break" ||
         exception.exception_type === "university_closed" ||
-        exception.exception_type === "class_cancelled")
+        exception.exception_type === "class_cancelled" ||
+        exception.exception_type === "custom" ||
+        exception.exception_type === "finals_period")
     ) {
       return { suppressed: true, reason: exception.title };
     }

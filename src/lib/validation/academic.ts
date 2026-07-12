@@ -75,3 +75,47 @@ export const semesterSaveSchema = z.object({
   termId: z.string().uuid(),
   removeOmitted: z.boolean().default(false),
 });
+
+export function getExceptionTypeDefaults(
+  exceptionType: z.infer<typeof academicExceptionTypeSchema>,
+): {
+  suppressesClasses: boolean;
+  blocksAvailability: boolean;
+  informationalOnly: boolean;
+} {
+  switch (exceptionType) {
+    case "altered_schedule":
+      return {
+        suppressesClasses: false,
+        blocksAvailability: false,
+        informationalOnly: false,
+      };
+    case "finals_period":
+      return {
+        suppressesClasses: true,
+        blocksAvailability: false,
+        informationalOnly: true,
+      };
+    case "break":
+    case "no_classes":
+    case "university_closed":
+    case "class_cancelled":
+      return {
+        suppressesClasses: true,
+        blocksAvailability: false,
+        informationalOnly: false,
+      };
+    default:
+      return {
+        suppressesClasses: false,
+        blocksAvailability: false,
+        informationalOnly: false,
+      };
+  }
+}
+
+export const canvasResolutionModeSchema = z.enum([
+  "link_suppress",
+  "link_only",
+  "ignored",
+]);

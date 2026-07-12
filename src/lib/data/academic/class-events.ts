@@ -32,10 +32,20 @@ export async function listAcademicClassEventsInRange(
 export async function listAllAcademicClassEventsForTerm(
   termStart: string,
   termEnd: string,
+  meetingIds?: string[],
 ): Promise<EventWithCalendar[]> {
-  return listAcademicClassEventsInRange(
+  const events = await listAcademicClassEventsInRange(
     `${termStart}T00:00:00.000Z`,
     `${termEnd}T23:59:59.999Z`,
+  );
+  if (!meetingIds || meetingIds.length === 0) {
+    return events;
+  }
+  const meetingIdSet = new Set(meetingIds);
+  return events.filter(
+    (event) =>
+      event.class_meeting_id != null &&
+      meetingIdSet.has(event.class_meeting_id),
   );
 }
 

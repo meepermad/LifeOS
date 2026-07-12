@@ -5,7 +5,14 @@ import {
   formatDueItemsResponse,
   formatNextClassResponse,
 } from "@/lib/assistant/schedule-summary";
+import { deduplicateScheduleEvents } from "@/lib/assistant/schedule-dedup";
+import { buildFinalsWeekSummary } from "@/lib/academic/finals-summary";
 import { resolveAcademicPeriodRange } from "@/lib/academic/resolve-period";
+import { listActiveSuppressedCanvasUids, listActiveSuppressedCanvasUidsForUser } from "@/lib/data/academic/canvas-links";
+import { listCoursesForTerm } from "@/lib/data/academic/courses";
+import { listAcademicTerms } from "@/lib/data/academic/terms";
+import { listMeetingsForTerm } from "@/lib/data/academic/meetings";
+import { listEventsInRangeForUser, listTasksForUser, listAcademicTermsForUser, listMeetingsForTermForUser, listCoursesForTermForUser } from "@/lib/data/events-for-user";
 import { suggestIntentsForUnknown } from "@/lib/assistant/paraphrase";
 import { extractRecognizedDatePhrase } from "@/lib/assistant/academic-parser";
 import type { DateRangeRef } from "@/lib/assistant/intents";
@@ -131,9 +138,59 @@ async function resolveAgendaBoundsAsync(
   return { ...bounds, label: dateKey };
 }
 
+export type ExecuteReadOnlyOptions = {
+  userId?: string;
+};
+
+async function listEventsForReadOnly(
+  userId: string | undefined,
+  start: string,
+  end: string,
+) {
+  if (userId) {
+    return listEventsInRangeForUser(userId, start, end);
+  }
+  return listEventsInRange(start, end);
+}
+
+async function listTasksForReadOnly(userId?: string) {
+  if (userId) {
+    return listTasksForUser(userId, { status: "active" });
+  }
+  return listTasks({ status: "active" });
+}
+
+async function loadScheduleDedupContext(userId?: string) {
+  const [suppressedCanvasUids, terms] = await Promise.all([
+    userId
+      ? listActiveSuppressedCanvasUidsForUser(userId)
+      : listActiveSuppressedCanvasUids(),
+    userId ? listAcademicTermsForUser(userId) : listAcademicTerms(),
+  ]);
+
+  const archivedMeetingIds = new Set<string>();
+  for (const term of terms.filter((entry) => entry.status === "archived")) {
+    const meetings = userId
+      ? await listMeetingsForTermForUser(userId, term.id)
+      : await listMeetingsForTerm(term.id);
+    for (const meeting of meetings) {
+      archivedMeetingIds.add(meeting.id);
+    }
+  }
+
+  return { suppressedCanvasUids, archivedMeetingIds };
+}
+
 async function resolveWorkloadSummary(
   command: Extract<ParsedCommand, { intent: "show_workload" }>,
 ) {
+  if (command.scope === "range" && command.range) {
+    return getCachedWorkload({
+      periodType: "week",
+      startDateKey: command.range.startDateKey,
+      endDateKey: command.range.endDateKey,
+    });
+  }
   if (command.scope === "week") {
     return getCachedWorkload({ periodType: "week" });
   }
@@ -185,7 +242,9 @@ async function resolveProposalIds(
 
 export async function executeReadOnly(
   command: ParsedCommand,
+  options: ExecuteReadOnlyOptions = {},
 ): Promise<ExecutorResponse> {
+  const { userId } = options;
   switch (command.intent) {
     case "help":
       return {
@@ -206,11 +265,18 @@ export async function executeReadOnly(
 
     case "schedule_summary": {
       const bounds = await resolveRangeBounds(command.range);
-      const events = await listEventsInRange(
+      const rawEvents = await listEventsForReadOnly(
+        userId,
         bounds.start.toISOString(),
         bounds.end.toISOString(),
       );
-      const tasks = await listTasks({ status: "active" });
+      const dedupContext = await loadScheduleDedupContext(userId);
+      const events = deduplicateScheduleEvents({
+        events: rawEvents,
+        suppressedCanvasUids: dedupContext.suppressedCanvasUids,
+        archivedMeetingIds: dedupContext.archivedMeetingIds,
+      });
+      const tasks = await listTasksForReadOnly(userId);
       const rangeTasks = tasks.filter((task) => {
         if (!task.due_at) return false;
         const dueKey = task.due_at.slice(0, 10);
@@ -219,7 +285,20 @@ export async function executeReadOnly(
           dueKey <= command.range.endDateKey
         );
       });
-      const workload = await getCachedWorkload({ periodType: "week" });
+      const workload =
+        command.range.phrase === "next week" ||
+        command.range.phrase === "this week" ||
+        command.range.phrase === "week after next"
+          ? await getCachedWorkload({
+              periodType: "week",
+              startDateKey: command.range.startDateKey,
+              endDateKey: command.range.endDateKey,
+            })
+          : await getCachedWorkload({
+              periodType: "week",
+              startDateKey: command.range.startDateKey,
+              endDateKey: command.range.endDateKey,
+            });
       const formatted = buildScheduleSummary({
         label: bounds.label,
         events,
@@ -237,10 +316,17 @@ export async function executeReadOnly(
 
     case "show_next_class": {
       const now = new Date();
-      const events = await listEventsInRange(
+      const rawEvents = await listEventsForReadOnly(
+        userId,
         now.toISOString(),
         new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       );
+      const dedupContext = await loadScheduleDedupContext(userId);
+      const events = deduplicateScheduleEvents({
+        events: rawEvents,
+        suppressedCanvasUids: dedupContext.suppressedCanvasUids,
+        archivedMeetingIds: dedupContext.archivedMeetingIds,
+      });
       const nextClass = events
         .filter(
           (event) =>
@@ -258,10 +344,17 @@ export async function executeReadOnly(
 
     case "show_classes": {
       const bounds = await resolveRangeBounds(command.range);
-      const events = await listEventsInRange(
+      const rawEvents = await listEventsForReadOnly(
+        userId,
         bounds.start.toISOString(),
         bounds.end.toISOString(),
       );
+      const dedupContext = await loadScheduleDedupContext(userId);
+      const events = deduplicateScheduleEvents({
+        events: rawEvents,
+        suppressedCanvasUids: dedupContext.suppressedCanvasUids,
+        archivedMeetingIds: dedupContext.archivedMeetingIds,
+      });
       return {
         content: formatClassesResponse({
           label: bounds.label,
@@ -284,6 +377,38 @@ export async function executeReadOnly(
           structuredPayload: {},
         };
       }
+
+      if (/\bfinals week\b/i.test(command.periodKind)) {
+        const terms = userId
+          ? await listAcademicTermsForUser(userId)
+          : await listAcademicTerms();
+        const activeTerm =
+          terms.find((term) => term.status === "active") ?? terms[0];
+        const courses = activeTerm
+          ? userId
+            ? await listCoursesForTermForUser(userId, activeTerm.id)
+            : await listCoursesForTerm(activeTerm.id)
+          : [];
+        const rawEvents = await listEventsForReadOnly(
+          userId,
+          `${resolved.startDateKey}T00:00:00.000Z`,
+          `${resolved.endDateKey}T23:59:59.999Z`,
+        );
+        const tasks = await listTasksForReadOnly(userId);
+        return {
+          content: buildFinalsWeekSummary({
+            label: resolved.label,
+            startDateKey: resolved.startDateKey,
+            endDateKey: resolved.endDateKey,
+            courses,
+            events: rawEvents,
+            tasks,
+          }),
+          messageType: "text",
+          structuredPayload: { periodKind: command.periodKind },
+        };
+      }
+
       return {
         content: formatAcademicPeriodResponse({
           label: resolved.label,
@@ -302,7 +427,7 @@ export async function executeReadOnly(
         bounds.end.toISOString(),
       );
       const deadlineEvents = events.filter((e) => e.event_type === "deadline");
-      const tasks = await listTasks({ status: "active" });
+      const tasks = await listTasksForReadOnly(userId);
       const rangeTasks = tasks.filter((task) => {
         if (!task.due_at) return false;
         const dueKey = task.due_at.slice(0, 10);
@@ -342,7 +467,11 @@ export async function executeReadOnly(
     case "show_workload": {
       const summary = await resolveWorkloadSummary(command);
       const scope =
-        command.scope === "week" ? "this week" : command.dateKey ?? command.scope;
+        command.scope === "range" && command.range
+          ? command.range.label
+          : command.scope === "week"
+            ? "this week"
+            : command.dateKey ?? command.scope;
       const formatted = formatWorkloadResponse(summary, scope);
       return {
         content: formatted.content,

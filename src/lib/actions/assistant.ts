@@ -12,8 +12,12 @@ import {
 } from "@/lib/assistant/executor";
 import { parseCommand } from "@/lib/assistant/parser";
 import { validateParsedCommand, assistantMessageSchema } from "@/lib/assistant/schemas";
-import { logParserOutcome } from "@/lib/data/assistant-parser-outcomes";
+import { getProfile } from "@/lib/data/bootstrap";
+import { listAcademicTerms } from "@/lib/data/academic/terms";
+import { listExceptionsForTerm } from "@/lib/data/academic/exceptions";
+import { telemetryFromCommand } from "@/lib/assistant/parser-telemetry";
 import { extractRecognizedDatePhrase } from "@/lib/assistant/academic-parser";
+import { logParserOutcome } from "@/lib/data/assistant-parser-outcomes";
 import { suggestIntentsForUnknown } from "@/lib/assistant/paraphrase";
 import { formatUnknownResponse } from "@/lib/assistant/responses";
 import type { ClarificationState, ParsedCommand } from "@/lib/assistant/intents";
@@ -64,6 +68,25 @@ function toActionError<T = void>(error: unknown): ActionResult<T> {
   }
 
   return { success: false, error: "An unexpected error occurred" };
+}
+
+async function buildParseOptions() {
+  const [profile, terms] = await Promise.all([
+    getProfile(),
+    listAcademicTerms(),
+  ]);
+  const activeTerm = terms.find((term) => term.status === "active");
+  const exceptions = activeTerm
+    ? await listExceptionsForTerm(activeTerm.id)
+    : [];
+  return {
+    timezone: profile.timezone,
+    academicContext: {
+      terms,
+      exceptions,
+      timezone: profile.timezone,
+    },
+  };
 }
 
 function revalidateAssistantPaths() {
@@ -193,6 +216,8 @@ export async function sendAssistantMessageAction(
     const pendingClarification = await getPendingClarification(thread.id);
     let parseResult;
 
+    const parseOptions = await buildParseOptions();
+
     if (pendingClarification) {
       const state = clarificationStateFromAction(pendingClarification);
       if (state) {
@@ -201,10 +226,10 @@ export async function sendAssistantMessageAction(
           await rejectAction(pendingClarification.id);
         }
       } else {
-        parseResult = parseCommand(parsedText);
+        parseResult = parseCommand(parsedText, new Date(), parseOptions);
       }
     } else {
-      parseResult = parseCommand(parsedText);
+      parseResult = parseCommand(parsedText, new Date(), parseOptions);
     }
 
     if (parseResult.kind === "clarification") {
@@ -246,7 +271,8 @@ export async function sendAssistantMessageAction(
         normalizedIntent: null,
         success: false,
         clarificationReason: "unrecognized_command",
-        recognizedDatePhrase: phrase,
+        dateRangeKind: null,
+        weekOffset: null,
       });
       await insertMessage({
         threadId: thread.id,
@@ -260,10 +286,12 @@ export async function sendAssistantMessageAction(
     }
 
     if (parseResult.kind === "command") {
+      const telemetry = telemetryFromCommand(parseResult.command);
       await logParserOutcome({
         normalizedIntent: parseResult.command.intent,
         success: true,
-        recognizedDatePhrase: extractRecognizedDatePhrase(parsedText),
+        dateRangeKind: telemetry.dateRangeKind,
+        weekOffset: telemetry.weekOffset,
       });
     }
 

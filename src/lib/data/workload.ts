@@ -5,11 +5,14 @@ import { listEventsInRange } from "@/lib/data/events";
 import { getPlanningPreferences } from "@/lib/data/preferences";
 import { listTasks } from "@/lib/data/tasks";
 import {
+  addAppDays,
   getTodayBoundsUtc,
   getWeekBounds,
   getWeekDayKeys,
   getAppLocalDateKey,
   nowInAppTimezone,
+  toUtcEndOfAppLocalDay,
+  toUtcFromAppLocalDate,
 } from "@/lib/dates/timezone";
 import { DatabaseError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
@@ -23,6 +26,8 @@ import type { EventRow, TaskRow } from "@/types/domain";
 export type WorkloadPeriodRequest = {
   periodType: WorkloadPeriodType;
   weekOffset?: number;
+  startDateKey?: string;
+  endDateKey?: string;
 };
 
 async function fetchEventsForWorkload(
@@ -186,6 +191,22 @@ async function resolvePeriod(
   const profile = await getProfile();
   const weekStartsOn = profile.week_starts_on as 0 | 1;
   const reference = nowInAppTimezone();
+
+  if (request.startDateKey && request.endDateKey) {
+    const dayKeys: string[] = [];
+    let current = request.startDateKey;
+    while (current <= request.endDateKey) {
+      dayKeys.push(current);
+      current = addAppDays(current, 1);
+      if (dayKeys.length > 60) break;
+    }
+    return {
+      periodStart: toUtcFromAppLocalDate(request.startDateKey),
+      periodEnd: toUtcEndOfAppLocalDay(request.endDateKey),
+      dayKeys,
+      weekStartsOn,
+    };
+  }
 
   if (request.periodType === "day") {
     const bounds = getTodayBoundsUtc(reference);

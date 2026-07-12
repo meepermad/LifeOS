@@ -5,7 +5,7 @@ import { ZodError } from "zod";
 import { z } from "zod";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { AppError } from "@/lib/errors/app-error";
-import { expandAllMeetings } from "@/lib/academic/meeting-expansion";
+import { expandAllMeetings, computeOccurrenceContentHash } from "@/lib/academic/meeting-expansion";
 import { classifyCanvasMeetingCandidates } from "@/lib/academic/canvas-candidates";
 import {
   buildTermFromPreset,
@@ -51,11 +51,20 @@ import { listEventsInRange } from "@/lib/data/events";
 import {
   academicExceptionSchema,
   academicTermSchema,
+  canvasResolutionModeSchema,
   classMeetingSchema,
   courseSchema,
+  getExceptionTypeDefaults,
   semesterSaveSchema,
 } from "@/lib/validation/academic";
-import { computeOccurrenceContentHash } from "@/lib/academic/meeting-expansion";
+import {
+  candidateFingerprint,
+  createCanvasLinkDecision,
+  listActiveCanvasLinkDecisions,
+  listIgnoredCandidateFingerprints,
+  previewSuppressionUids,
+  reverseCanvasLinkDecision,
+} from "@/lib/data/academic/canvas-links";
 
 export type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -116,6 +125,7 @@ export async function getTermDetailsAction(termId: string): Promise<
     meetings: Awaited<ReturnType<typeof listMeetingsForTerm>>;
     exceptions: Awaited<ReturnType<typeof listExceptionsForTerm>>;
     candidates: ReturnType<typeof classifyCanvasMeetingCandidates>;
+    linkDecisions: Awaited<ReturnType<typeof listActiveCanvasLinkDecisions>>;
   }>
 > {
   try {
@@ -125,11 +135,14 @@ export async function getTermDetailsAction(termId: string): Promise<
       return { success: false, error: "Term not found" };
     }
 
-    const [courses, meetings, exceptions, linkedUids] = await Promise.all([
+    const [courses, meetings, exceptions, linkedUids, ignored, linkDecisions] =
+      await Promise.all([
       listCoursesForTerm(termId),
       listMeetingsForTerm(termId),
       listExceptionsForTerm(termId),
       listLinkedCanvasUids(),
+      listIgnoredCandidateFingerprints(termId),
+      listActiveCanvasLinkDecisions(termId),
     ]);
 
     let candidates: ReturnType<typeof classifyCanvasMeetingCandidates> = [];
@@ -149,14 +162,14 @@ export async function getTermDetailsAction(termId: string): Promise<
         ),
         linkedCanvasUids: linkedUids,
         existingSchoolEvents: schoolEvents,
-      });
+      }).filter((candidate) => !ignored.has(candidateFingerprint(candidate)));
     } catch {
       candidates = [];
     }
 
     return {
       success: true,
-      data: { term, courses, meetings, exceptions, candidates },
+      data: { term, courses, meetings, exceptions, candidates, linkDecisions },
     };
   } catch (error) {
     return toActionError(error);
@@ -413,15 +426,25 @@ export async function saveExceptionAction(
       revalidatePath("/school");
       return { success: true, data: { exceptionId: exception.id } };
     }
+    const defaults = getExceptionTypeDefaults(parsed.exceptionType);
+    const suppressesClasses = parsed.isUserModified
+      ? parsed.suppressesClasses
+      : defaults.suppressesClasses;
+    const blocksAvailability = parsed.isUserModified
+      ? parsed.blocksAvailability
+      : defaults.blocksAvailability;
+    const informationalOnly = parsed.isUserModified
+      ? parsed.informationalOnly
+      : defaults.informationalOnly;
     const exception = await createAcademicException({
       academic_term_id: termId,
       exception_type: parsed.exceptionType,
       start_date: parsed.startDate,
       end_date: parsed.endDate,
       course_id: parsed.courseId ?? null,
-      suppresses_classes: parsed.suppressesClasses,
-      blocks_availability: parsed.blocksAvailability,
-      informational_only: parsed.informationalOnly,
+      suppresses_classes: suppressesClasses,
+      blocks_availability: blocksAvailability,
+      informational_only: informationalOnly,
       title: parsed.title,
       notes: parsed.notes ?? null,
       altered_schedule: (parsed.alteredSchedule ?? null) as import("@/types/database.types").Json,
@@ -448,9 +471,51 @@ export async function deleteExceptionAction(
   }
 }
 
-export async function acceptCanvasCandidateAction(input: {
-  termId: string;
+export async function previewCanvasCandidateResolutionAction(input: {
   candidate: {
+    id: string;
+    title: string;
+    sourceCanvasUids: string[];
+    occurrenceCount: number;
+    startTime: string;
+    endTime: string;
+  };
+}): Promise<
+  ActionResult<{
+    suppressionCount: number;
+    suppressionUids: string[];
+    previewLines: string[];
+  }>
+> {
+  try {
+    await requireAllowedUser();
+    const uids = previewSuppressionUids({
+      id: input.candidate.id,
+      title: input.candidate.title,
+      sourceCanvasUids: input.candidate.sourceCanvasUids,
+      occurrenceCount: input.candidate.occurrenceCount,
+    } as never);
+    return {
+      success: true,
+      data: {
+        suppressionCount: uids.length,
+        suppressionUids: uids,
+        previewLines: [
+          `${uids.length} Canvas class occurrence${uids.length === 1 ? "" : "s"} would be suppressed`,
+          `${input.candidate.title} (${input.candidate.startTime}–${input.candidate.endTime})`,
+        ],
+      },
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function resolveCanvasCandidateAction(input: {
+  termId: string;
+  resolutionMode: z.infer<typeof canvasResolutionModeSchema>;
+  candidate: {
+    id: string;
     title: string;
     courseCode: string | null;
     daysOfWeek: number[];
@@ -460,12 +525,28 @@ export async function acceptCanvasCandidateAction(input: {
     effectiveEndDate: string;
     location: string | null;
     sourceCanvasUids: string[];
+    occurrenceCount: number;
   };
 }): Promise<ActionResult> {
   try {
     await requireAllowedUser();
+    const resolutionMode = canvasResolutionModeSchema.parse(input.resolutionMode);
     const term = await getAcademicTermById(input.termId);
     if (!term) return { success: false, error: "Term not found" };
+
+    const fingerprint = candidateFingerprint(input.candidate as never);
+
+    if (resolutionMode === "ignored") {
+      await createCanvasLinkDecision({
+        termId: term.id,
+        classMeetingId: null,
+        resolutionMode: "ignored",
+        candidateFingerprint: fingerprint,
+        canvasUids: input.candidate.sourceCanvasUids,
+      });
+      revalidatePath("/school");
+      return { success: true };
+    }
 
     const course = await createCourse({
       academic_term_id: term.id,
@@ -475,7 +556,7 @@ export async function acceptCanvasCandidateAction(input: {
       color: null,
     });
 
-    await createClassMeeting({
+    const meeting = await createClassMeeting({
       course_id: course.id,
       days_of_week: input.candidate.daysOfWeek,
       start_time: input.candidate.startTime,
@@ -489,6 +570,61 @@ export async function acceptCanvasCandidateAction(input: {
       content_hash: null,
     });
 
+    const suppressUids =
+      resolutionMode === "link_suppress"
+        ? previewSuppressionUids(input.candidate as never)
+        : [];
+
+    await createCanvasLinkDecision({
+      termId: term.id,
+      classMeetingId: meeting.id,
+      resolutionMode,
+      candidateFingerprint: fingerprint,
+      canvasUids: input.candidate.sourceCanvasUids,
+      suppressUids,
+    });
+
+    revalidatePath("/school");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/** @deprecated Use resolveCanvasCandidateAction */
+export async function acceptCanvasCandidateAction(input: {
+  termId: string;
+  candidate: {
+    title: string;
+    courseCode: string | null;
+    daysOfWeek: number[];
+    startTime: string;
+    endTime: string;
+    effectiveStartDate: string;
+    effectiveEndDate: string;
+    location: string | null;
+    sourceCanvasUids: string[];
+    id?: string;
+    occurrenceCount?: number;
+  };
+}): Promise<ActionResult> {
+  return resolveCanvasCandidateAction({
+    termId: input.termId,
+    resolutionMode: "link_only",
+    candidate: {
+      ...input.candidate,
+      id: input.candidate.id ?? input.candidate.title,
+      occurrenceCount: input.candidate.occurrenceCount ?? input.candidate.sourceCanvasUids.length,
+    },
+  });
+}
+
+export async function reverseCanvasLinkDecisionAction(
+  decisionId: string,
+): Promise<ActionResult> {
+  try {
+    await requireAllowedUser();
+    await reverseCanvasLinkDecision(decisionId);
     revalidatePath("/school");
     return { success: true };
   } catch (error) {
@@ -510,6 +646,9 @@ export async function previewSemesterAction(
     const parsed = semesterSaveSchema.parse(input);
     const term = await getAcademicTermById(parsed.termId);
     if (!term) return { success: false, error: "Term not found" };
+    if (term.status === "archived") {
+      return { success: false, error: "Cannot reconcile an archived term" };
+    }
 
     const [courses, meetings, exceptions] = await Promise.all([
       listCoursesForTerm(parsed.termId),
@@ -517,6 +656,7 @@ export async function previewSemesterAction(
       listExceptionsForTerm(parsed.termId),
     ]);
 
+    const meetingIds = meetings.map((meeting) => meeting.id);
     const courseById = new Map(courses.map((course) => [course.id, course]));
     const desired = expandAllMeetings({
       meetings: meetings.map((meeting) => {
@@ -528,16 +668,19 @@ export async function previewSemesterAction(
         };
       }),
       exceptions,
+      termClassesStart: term.classes_start,
+      termClassesEnd: term.classes_end,
     });
 
     const existing = await listAllAcademicClassEventsForTerm(
       term.classes_start,
       term.classes_end,
+      meetingIds,
     );
     const { items } = reconcileSemesterOccurrences({
       desiredOccurrences: desired,
       existingEvents: existing,
-      removeOmitted: parsed.removeOmitted,
+      removeOmitted: true,
     });
 
     const allEvents = await listEventsInRange(
@@ -575,12 +718,16 @@ export async function saveSemesterAction(
 
     const term = await getAcademicTermById(parsed.termId);
     if (!term) return { success: false, error: "Term not found" };
+    if (term.status === "archived") {
+      return { success: false, error: "Cannot reconcile an archived term" };
+    }
 
     const [courses, meetings, exceptions] = await Promise.all([
       listCoursesForTerm(parsed.termId),
       listMeetingsForTerm(parsed.termId),
       listExceptionsForTerm(parsed.termId),
     ]);
+    const meetingIds = meetings.map((meeting) => meeting.id);
     const courseById = new Map(courses.map((course) => [course.id, course]));
     const desired = expandAllMeetings({
       meetings: meetings.map((meeting) => {
@@ -592,10 +739,13 @@ export async function saveSemesterAction(
         };
       }),
       exceptions,
+      termClassesStart: term.classes_start,
+      termClassesEnd: term.classes_end,
     });
     const existing = await listAllAcademicClassEventsForTerm(
       term.classes_start,
       term.classes_end,
+      meetingIds,
     );
     const { items } = reconcileSemesterOccurrences({
       desiredOccurrences: desired,

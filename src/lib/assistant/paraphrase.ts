@@ -1,4 +1,6 @@
 import type { ParsedDateRange } from "@/lib/dates/range-parser";
+import { formatInTimeZone } from "date-fns-tz";
+import { APP_TIMEZONE } from "@/lib/constants";
 
 export type ParaphraseCategory =
   | "schedule_summary"
@@ -13,11 +15,18 @@ export type ParaphraseCategory =
 
 const SCHEDULE_SUMMARY_PATTERNS = [
   /\bwhat does .+ look like\b/i,
+  /\bwhat do .+ look like\b/i,
   /\bwhat do i have going on\b/i,
+  /\bwhat is going on with me\b/i,
+  /\bwhat am i doing\b/i,
   /\bgive me a rundown\b/i,
   /\bshow my upcoming week\b/i,
+  /\bshow me the week ahead\b/i,
   /\bwhat does school look like\b/i,
+  /\bwhat do work and school look like\b/i,
+  /\bwhat is my schedule like\b/i,
   /\bupcoming week\b/i,
+  /\bweek ahead\b/i,
 ];
 
 const NEXT_CLASS_PATTERNS = [/\bwhen is my next class\b/i];
@@ -61,14 +70,17 @@ export function classifyParaphrase(text: string): ParaphraseCategory {
   return null;
 }
 
-export function toDateRangeRef(range: ParsedDateRange): {
+export function toDateRangeRef(
+  range: ParsedDateRange,
+  timezone: string = APP_TIMEZONE,
+): {
   phrase: string;
   startDateKey: string;
   endDateKey: string;
   label: string;
 } {
-  const startDateKey = range.start.toISOString().slice(0, 10);
-  const endDateKey = range.end.toISOString().slice(0, 10);
+  const startDateKey = formatInTimeZone(range.start, timezone, "yyyy-MM-dd");
+  const endDateKey = formatInTimeZone(range.end, timezone, "yyyy-MM-dd");
   return {
     phrase: range.phrase,
     startDateKey,

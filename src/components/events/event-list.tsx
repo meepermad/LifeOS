@@ -11,6 +11,10 @@ import { formatMinutes } from "@/lib/planning/summaries";
 import { CanvasDeadlineAction } from "@/components/events/canvas-deadline-action";
 import { WorkloadStatusBadge } from "@/components/workload/workload-status-badge";
 import { EmptyState } from "@/components/forms/ui";
+import {
+  ACADEMIC_EVENT_HELP_TEXT,
+  buildSchoolOccurrenceUrl,
+} from "@/lib/academic/occurrence-actions";
 
 export type RelatedCanvasTask = {
   id: string;
@@ -29,6 +33,9 @@ export function EventListItem({
   relatedTask?: RelatedCanvasTask | null;
 }) {
   const editable = !event.is_read_only;
+  const isAcademicManaged =
+    event.source === "academic" && event.class_meeting_id != null;
+  const occurrenceDateKey = getAppLocalDateKey(event.start_at);
   const isCanvasDeadline =
     (event.source === "canvas" || event.calendar_source === "canvas") &&
     event.event_type === "deadline";
@@ -79,12 +86,49 @@ export function EventListItem({
               Sync Canvas to link this assignment.
             </p>
           )}
+
+          {isAcademicManaged && (
+            <div className="mt-2 space-y-1 text-xs">
+              <p className="text-muted">{ACADEMIC_EVENT_HELP_TEXT}</p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildSchoolOccurrenceUrl({
+                    action: "edit_meeting",
+                  })}
+                  className="text-accent hover:underline"
+                >
+                  Edit meeting schedule
+                </Link>
+                <Link
+                  href={buildSchoolOccurrenceUrl({
+                    action: "cancel_occurrence",
+                    dateKey: occurrenceDateKey,
+                  })}
+                  className="text-accent hover:underline"
+                >
+                  Cancel this class
+                </Link>
+                <Link
+                  href={buildSchoolOccurrenceUrl({
+                    action: "alter_occurrence",
+                    dateKey: occurrenceDateKey,
+                  })}
+                  className="text-accent hover:underline"
+                >
+                  Change this occurrence
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {(event.source === "canvas" || event.calendar_source === "canvas") && (
             <span className="text-xs font-medium text-accent">Canvas</span>
           )}
-          {event.is_read_only && (
+          {isAcademicManaged && (
+            <span className="text-xs text-muted">School-managed</span>
+          )}
+          {event.is_read_only && !isAcademicManaged && (
             <span className="text-xs text-muted">Read-only</span>
           )}
         </div>

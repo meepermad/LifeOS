@@ -290,12 +290,40 @@ function parseExplicitRange(
   return null;
 }
 
+function localDateKey(now: Date, timezone: string): string {
+  return formatInProfileTz(now, timezone, "yyyy-MM-dd");
+}
+
+function addLocalDays(dateKey: string, days: number): string {
+  const base = parse(dateKey, "yyyy-MM-dd", new Date());
+  return format(addDays(base, days), "yyyy-MM-dd");
+}
+
+/** Infer calendar-week phrase from flexible schedule wording. */
+export function inferWeekPhrase(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (/\bweek after next\b/.test(lower) || /\bthe week after next\b/.test(lower)) {
+    return "week after next";
+  }
+  if (/\bnext week\b/.test(lower)) return "next week";
+  if (/\b(the )?week ahead\b/.test(lower) || /\bupcoming week\b/.test(lower)) {
+    return "next week";
+  }
+  if (/\bweek\b/.test(lower) && /\bnext\b/.test(lower) && !/\bnext week\b/.test(lower)) {
+    return "next week";
+  }
+  return null;
+}
+
 export function extractDatePhrase(text: string): string | null {
   const lower = text.toLowerCase();
   const patterns = [
     /\bthis week\b/,
     /\bnext week\b/,
     /\bweek after next\b/,
+    /\bthe week ahead\b/,
+    /\bweek ahead\b/,
+    /\bupcoming week\b/,
     /\blast week\b/,
     /\bnext seven days\b/,
     /\bthis weekend\b/,
@@ -352,13 +380,27 @@ export function parseDateRange(
     return { ...bounds, label: "yesterday", phrase: "yesterday", kind: "day" };
   }
 
-  if (/\bweek after next\b/.test(lower)) {
+  if (/\bweek after next\b/.test(lower) || /\bthe week after next\b/.test(lower)) {
     const bounds = getCalendarWeekBounds(now, 2, timezone);
     return {
       start: bounds.start,
       end: bounds.end,
       label: "week after next",
       phrase: "week after next",
+      kind: "week",
+    };
+  }
+
+  if (
+    /\b(the )?week ahead\b/.test(lower) ||
+    /\bupcoming week\b/.test(lower)
+  ) {
+    const bounds = getCalendarWeekBounds(now, 1, timezone);
+    return {
+      start: bounds.start,
+      end: bounds.end,
+      label: "next week",
+      phrase: "next week",
       kind: "week",
     };
   }
@@ -397,14 +439,30 @@ export function parseDateRange(
   }
 
   if (/\bnext seven days\b/.test(lower)) {
-    const startKey = getAppLocalDateKey(now);
-    const endKey = addAppDays(startKey, 6);
+    const startKey = localDateKey(now, timezone);
+    const endKey = addLocalDays(startKey, 6);
     return {
-      start: toUtcFromAppLocalDate(startKey),
-      end: toUtcEndOfAppLocalDay(endKey),
+      start: fromZonedTime(`${startKey}T00:00:00`, timezone),
+      end: fromZonedTime(`${endKey}T23:59:59`, timezone),
       label: "next seven days",
       phrase: "next seven days",
       kind: "rolling",
+    };
+  }
+
+  const inferredWeek = inferWeekPhrase(lower);
+  if (inferredWeek && /\b(look|going on|rundown|schedule|doing|busy|ahead)\b/.test(lower)) {
+    const bounds = getCalendarWeekBounds(
+      now,
+      inferredWeek === "week after next" ? 2 : 1,
+      timezone,
+    );
+    return {
+      start: bounds.start,
+      end: bounds.end,
+      label: inferredWeek === "week after next" ? "week after next" : "next week",
+      phrase: inferredWeek === "week after next" ? "week after next" : "next week",
+      kind: "week",
     };
   }
 

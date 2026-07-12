@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  acceptCanvasCandidateAction,
+  previewCanvasCandidateResolutionAction,
+  resolveCanvasCandidateAction,
+  reverseCanvasLinkDecisionAction,
   activateTermAction,
   applyPresetAction,
   archiveTermAction,
@@ -36,6 +38,7 @@ import type {
   ClassMeetingRow,
   CourseRow,
 } from "@/types/domain";
+import type { CanvasLinkDecisionRow } from "@/lib/data/academic/canvas-links";
 import { DAY_NAMES } from "@/lib/constants";
 
 type Props = {
@@ -54,6 +57,8 @@ export function SchoolSetup({ terms, presets, initialTermId }: Props) {
   const [meetings, setMeetings] = useState<ClassMeetingRow[]>([]);
   const [exceptions, setExceptions] = useState<AcademicExceptionRow[]>([]);
   const [candidates, setCandidates] = useState<CanvasMeetingCandidate[]>([]);
+  const [linkDecisions, setLinkDecisions] = useState<CanvasLinkDecisionRow[]>([]);
+  const [suppressionPreview, setSuppressionPreview] = useState<Record<string, string[]>>({});
   const [preview, setPreview] = useState<SemesterPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +75,7 @@ export function SchoolSetup({ terms, presets, initialTermId }: Props) {
     setMeetings(result.data.meetings);
     setExceptions(result.data.exceptions);
     setCandidates(result.data.candidates);
+    setLinkDecisions(result.data.linkDecisions);
     setPreview(null);
     setError(null);
   }, []);
@@ -225,6 +231,18 @@ export function SchoolSetup({ terms, presets, initialTermId }: Props) {
 
       {term && (
         <>
+          <SectionCard
+            title="How class events work"
+            description="Materialized class occurrences are managed through School, not by editing calendar events directly."
+          >
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+              <li>Recurring changes: edit class meetings here, then Save & reconcile.</li>
+              <li>Cancel one class: add a course-specific class_cancelled exception.</li>
+              <li>Move one class: add an altered_schedule exception for that date.</li>
+              <li>Availability blocking is off by default for breaks and closures; enable it only when you are personally unavailable.</li>
+            </ul>
+          </SectionCard>
+
           <SectionCard title="Term dates" description="Edit semester boundaries.">
             <div className="grid gap-3 sm:grid-cols-2">
               {(
@@ -447,7 +465,7 @@ export function SchoolSetup({ terms, presets, initialTermId }: Props) {
           {candidates.length > 0 && (
             <SectionCard
               title="Canvas meeting candidates"
-              description="Review before converting to class meetings."
+              description="Choose how to link each recurring Canvas class pattern."
             >
               <div className="space-y-3">
                 {candidates.map((candidate) => (
@@ -460,20 +478,108 @@ export function SchoolSetup({ terms, presets, initialTermId }: Props) {
                     <p className="text-xs">
                       Confidence: {candidate.confidence}
                     </p>
-                    <PrimaryButton
+                    {suppressionPreview[candidate.id] && (
+                      <p className="mt-2 text-xs text-muted">
+                        Would suppress {suppressionPreview[candidate.id].length} Canvas
+                        class occurrence
+                        {suppressionPreview[candidate.id].length === 1 ? "" : "s"}.
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <SecondaryButton
+                        onClick={() => {
+                          startTransition(async () => {
+                            const preview =
+                              await previewCanvasCandidateResolutionAction({
+                                candidate,
+                              });
+                            if (preview.success && preview.data) {
+                              setSuppressionPreview((current) => ({
+                                ...current,
+                                [candidate.id]: preview.data!.suppressionUids,
+                              }));
+                            }
+                          });
+                        }}
+                        disabled={isPending}
+                      >
+                        Preview suppression
+                      </SecondaryButton>
+                      <PrimaryButton
+                        onClick={() => {
+                          startTransition(async () => {
+                            await resolveCanvasCandidateAction({
+                              termId: term.id,
+                              resolutionMode: "link_suppress",
+                              candidate,
+                            });
+                            await loadTerm(term.id);
+                          });
+                        }}
+                        loading={isPending}
+                      >
+                        Link and suppress duplicates
+                      </PrimaryButton>
+                      <SecondaryButton
+                        onClick={() => {
+                          startTransition(async () => {
+                            await resolveCanvasCandidateAction({
+                              termId: term.id,
+                              resolutionMode: "link_only",
+                              candidate,
+                            });
+                            await loadTerm(term.id);
+                          });
+                        }}
+                        disabled={isPending}
+                      >
+                        Link without suppressing
+                      </SecondaryButton>
+                      <SecondaryButton
+                        onClick={() => {
+                          startTransition(async () => {
+                            await resolveCanvasCandidateAction({
+                              termId: term.id,
+                              resolutionMode: "ignored",
+                              candidate,
+                            });
+                            await loadTerm(term.id);
+                          });
+                        }}
+                        disabled={isPending}
+                      >
+                        Ignore candidate
+                      </SecondaryButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {linkDecisions.length > 0 && (
+            <SectionCard title="Linked Canvas decisions">
+              <div className="space-y-2">
+                {linkDecisions.map((decision) => (
+                  <div
+                    key={decision.id}
+                    className="rounded-lg border border-border p-3 text-sm"
+                  >
+                    <p className="font-medium">{decision.resolution_mode}</p>
+                    <p className="text-xs text-muted">
+                      {decision.candidate_fingerprint}
+                    </p>
+                    <SecondaryButton
                       onClick={() => {
                         startTransition(async () => {
-                          await acceptCanvasCandidateAction({
-                            termId: term.id,
-                            candidate,
-                          });
+                          await reverseCanvasLinkDecisionAction(decision.id);
                           await loadTerm(term.id);
                         });
                       }}
-                      loading={isPending}
+                      disabled={isPending}
                     >
-                      Accept as class meeting
-                    </PrimaryButton>
+                      Reverse decision
+                    </SecondaryButton>
                   </div>
                 ))}
               </div>

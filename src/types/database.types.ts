@@ -151,6 +151,177 @@ export type Database = {
         }
         Relationships: []
       }
+      academic_exceptions: {
+        Row: {
+          academic_term_id: string
+          altered_schedule: Json | null
+          blocks_availability: boolean
+          course_id: string | null
+          created_at: string
+          end_date: string
+          exception_type: string
+          id: string
+          informational_only: boolean
+          is_user_modified: boolean
+          notes: string | null
+          preset_key: string | null
+          start_date: string
+          suppresses_classes: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          academic_term_id: string
+          altered_schedule?: Json | null
+          blocks_availability?: boolean
+          course_id?: string | null
+          created_at?: string
+          end_date: string
+          exception_type: string
+          id?: string
+          informational_only?: boolean
+          is_user_modified?: boolean
+          notes?: string | null
+          preset_key?: string | null
+          start_date: string
+          suppresses_classes?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          academic_term_id?: string
+          altered_schedule?: Json | null
+          blocks_availability?: boolean
+          course_id?: string | null
+          created_at?: string
+          end_date?: string
+          exception_type?: string
+          id?: string
+          informational_only?: boolean
+          is_user_modified?: boolean
+          notes?: string | null
+          preset_key?: string | null
+          start_date?: string
+          suppresses_classes?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_exceptions_academic_term_id_fkey"
+            columns: ["academic_term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_exceptions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academic_terms: {
+        Row: {
+          classes_end: string
+          classes_start: string
+          created_at: string
+          end_date: string
+          finals_end: string | null
+          finals_start: string | null
+          id: string
+          institution: string
+          name: string
+          source_metadata: Json | null
+          source_preset_imported_at: string | null
+          source_preset_key: string | null
+          source_preset_revision: string | null
+          start_date: string
+          status: string
+          term_type: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          classes_end: string
+          classes_start: string
+          created_at?: string
+          end_date: string
+          finals_end?: string | null
+          finals_start?: string | null
+          id?: string
+          institution?: string
+          name: string
+          source_metadata?: Json | null
+          source_preset_imported_at?: string | null
+          source_preset_key?: string | null
+          source_preset_revision?: string | null
+          start_date: string
+          status?: string
+          term_type?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          classes_end?: string
+          classes_start?: string
+          created_at?: string
+          end_date?: string
+          finals_end?: string | null
+          finals_start?: string | null
+          id?: string
+          institution?: string
+          name?: string
+          source_metadata?: Json | null
+          source_preset_imported_at?: string | null
+          source_preset_key?: string | null
+          source_preset_revision?: string | null
+          start_date?: string
+          status?: string
+          term_type?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_parser_outcomes: {
+        Row: {
+          clarification_reason: string | null
+          created_at: string
+          id: string
+          normalized_intent: string | null
+          recognized_date_phrase: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          clarification_reason?: string | null
+          created_at?: string
+          id?: string
+          normalized_intent?: string | null
+          recognized_date_phrase?: string | null
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          clarification_reason?: string | null
+          created_at?: string
+          id?: string
+          normalized_intent?: string | null
+          recognized_date_phrase?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       availability_rules: {
         Row: {
           available_end: string
@@ -297,12 +468,119 @@ export type Database = {
         }
         Relationships: []
       }
+      class_meetings: {
+        Row: {
+          content_hash: string | null
+          course_id: string
+          created_at: string
+          days_of_week: number[]
+          effective_end_date: string
+          effective_start_date: string
+          end_time: string
+          id: string
+          is_online: boolean
+          location: string | null
+          source_canvas_uid: string | null
+          start_time: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_hash?: string | null
+          course_id: string
+          created_at?: string
+          days_of_week: number[]
+          effective_end_date: string
+          effective_start_date: string
+          end_time: string
+          id?: string
+          is_online?: boolean
+          location?: string | null
+          source_canvas_uid?: string | null
+          start_time: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_hash?: string | null
+          course_id?: string
+          created_at?: string
+          days_of_week?: number[]
+          effective_end_date?: string
+          effective_start_date?: string
+          end_time?: string
+          id?: string
+          is_online?: boolean
+          location?: string | null
+          source_canvas_uid?: string | null
+          start_time?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_meetings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          academic_term_id: string
+          code: string
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          section: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          academic_term_id: string
+          code?: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          section?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          academic_term_id?: string
+          code?: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          section?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_academic_term_id_fkey"
+            columns: ["academic_term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           all_day: boolean
           assistant_action_id: string | null
           blocks_time: boolean
           calendar_id: string
+          class_meeting_id: string | null
           content_hash: string | null
           created_at: string
           created_by_assistant: boolean
@@ -335,6 +613,7 @@ export type Database = {
           assistant_action_id?: string | null
           blocks_time?: boolean
           calendar_id: string
+          class_meeting_id?: string | null
           content_hash?: string | null
           created_at?: string
           created_by_assistant?: boolean
@@ -367,6 +646,7 @@ export type Database = {
           assistant_action_id?: string | null
           blocks_time?: boolean
           calendar_id?: string
+          class_meeting_id?: string | null
           content_hash?: string | null
           created_at?: string
           created_by_assistant?: boolean
@@ -407,6 +687,13 @@ export type Database = {
             columns: ["calendar_id"]
             isOneToOne: false
             referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_class_meeting_id_fkey"
+            columns: ["class_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "class_meetings"
             referencedColumns: ["id"]
           },
           {

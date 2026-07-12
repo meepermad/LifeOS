@@ -11,6 +11,7 @@ function makeShift(
     id: "1",
     user_id: "u",
     calendar_id: "c",
+    class_meeting_id: null,
     external_event_id: null,
     title: "Work",
     description: null,

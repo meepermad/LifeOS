@@ -33,7 +33,8 @@ export type EventSource =
   | "google"
   | "canvas"
   | "workforce_import"
-  | "email";
+  | "email"
+  | "academic";
 export type EventType =
   | "class"
   | "work"
@@ -146,3 +147,24 @@ export type ShortcutDeviceRow =
   Database["public"]["Tables"]["shortcut_devices"]["Row"];
 
 export type SpokenDetailLevel = "private" | "detailed";
+
+export type AcademicTermRow =
+  Database["public"]["Tables"]["academic_terms"]["Row"];
+export type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
+export type ClassMeetingRow =
+  Database["public"]["Tables"]["class_meetings"]["Row"];
+export type AcademicExceptionRow =
+  Database["public"]["Tables"]["academic_exceptions"]["Row"];
+export type AssistantParserOutcomeRow =
+  Database["public"]["Tables"]["assistant_parser_outcomes"]["Row"];
+
+export type AcademicTermType = "fall" | "spring" | "summer" | "custom";
+export type AcademicTermStatus = "draft" | "active" | "archived";
+export type AcademicExceptionType =
+  | "no_classes"
+  | "university_closed"
+  | "break"
+  | "finals_period"
+  | "class_cancelled"
+  | "altered_schedule"
+  | "custom";

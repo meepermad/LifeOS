@@ -1,0 +1,90 @@
+{
+  "key": "k-state-2026-2027",
+  "name": "K-State 2026–2027 Academic Calendar",
+  "institution": "Kansas State University",
+  "sourceUrl": "https://www.k-state.edu/registrar/students/calendar/",
+  "sourcePdfUrl": "https://www.k-state.edu/registrar/students/calendar/2026-2027%20Academic-Calendar-for-Web.pdf",
+  "revisionDate": "2026-02-12",
+  "terms": [
+    {
+      "key": "fall-2026",
+      "name": "Fall 2026",
+      "institution": "Kansas State University",
+      "termType": "fall",
+      "startDate": "2026-08-17",
+      "endDate": "2026-12-18",
+      "classesStart": "2026-08-24",
+      "classesEnd": "2026-12-11",
+      "finalsStart": "2026-12-14",
+      "finalsEnd": "2026-12-18",
+      "timezone": "America/Chicago",
+      "exceptions": [
+        {
+          "key": "fall-2026-wildcat-pause",
+          "exceptionType": "no_classes",
+          "startDate": "2026-10-09",
+          "endDate": "2026-10-09",
+          "title": "Wildcat Pause Day",
+          "suppressesClasses": true,
+          "blocksAvailability": false,
+          "informationalOnly": false
+        },
+        {
+          "key": "fall-2026-break",
+          "exceptionType": "break",
+          "startDate": "2026-11-22",
+          "endDate": "2026-11-29",
+          "title": "Fall Break",
+          "suppressesClasses": true,
+          "blocksAvailability": false,
+          "informationalOnly": false
+        },
+        {
+          "key": "fall-2026-finals",
+          "exceptionType": "finals_period",
+          "startDate": "2026-12-14",
+          "endDate": "2026-12-18",
+          "title": "Finals Week",
+          "suppressesClasses": false,
+          "blocksAvailability": false,
+          "informationalOnly": true
+        }
+      ]
+    },
+    {
+      "key": "spring-2027",
+      "name": "Spring 2027",
+      "institution": "Kansas State University",
+      "termType": "spring",
+      "startDate": "2027-01-11",
+      "endDate": "2027-05-14",
+      "classesStart": "2027-01-19",
+      "classesEnd": "2027-05-07",
+      "finalsStart": "2027-05-10",
+      "finalsEnd": "2027-05-14",
+      "timezone": "America/Chicago",
+      "exceptions": [
+        {
+          "key": "spring-2027-break",
+          "exceptionType": "break",
+          "startDate": "2027-03-14",
+          "endDate": "2027-03-21",
+          "title": "Spring Break",
+          "suppressesClasses": true,
+          "blocksAvailability": false,
+          "informationalOnly": false
+        },
+        {
+          "key": "spring-2027-finals",
+          "exceptionType": "finals_period",
+          "startDate": "2027-05-10",
+          "endDate": "2027-05-14",
+          "title": "Finals Week",
+          "suppressesClasses": false,
+          "blocksAvailability": false,
+          "informationalOnly": true
+        }
+      ]
+    }
+  ]
+}

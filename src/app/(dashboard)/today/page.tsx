@@ -9,7 +9,11 @@ import {
   getCachedWorkload,
   listCanvasTasksNeedingEstimates,
 } from "@/lib/data/workload";
-import { getTodayBoundsUtc } from "@/lib/dates/timezone";
+import { getActiveBreakForDate } from "@/lib/academic/exception-filter";
+import { getActiveTerm } from "@/lib/academic/active-term";
+import { listAcademicTerms } from "@/lib/data/academic/terms";
+import { listExceptionsForTerm } from "@/lib/data/academic/exceptions";
+import { getAppLocalDateKey, getTodayBoundsUtc, nowInAppTimezone } from "@/lib/dates/timezone";
 import type { RelatedCanvasTask } from "@/components/events/event-list";
 import type { TaskRow } from "@/types/domain";
 
@@ -42,8 +46,21 @@ export default async function TodayPage() {
   let allocatedToday: Awaited<ReturnType<typeof listTasks>> = [];
   let planningRun: Awaited<ReturnType<typeof getActivePlanningRun>> = null;
   let planningError: string | null = null;
+  let academicBreakTitle: string | null = null;
 
   const bounds = getTodayBoundsUtc();
+  const todayKey = getAppLocalDateKey(nowInAppTimezone());
+
+  try {
+    const terms = await listAcademicTerms();
+    const active = getActiveTerm(terms);
+    if (active) {
+      const exceptions = await listExceptionsForTerm(active.id);
+      academicBreakTitle = getActiveBreakForDate(todayKey, exceptions)?.title ?? null;
+    }
+  } catch {
+    academicBreakTitle = null;
+  }
 
   try {
     [events, nextEvent] = await Promise.all([
@@ -107,6 +124,7 @@ export default async function TodayPage() {
       tasksError={tasksError}
       workloadError={workloadError}
       planningError={planningError}
+      academicBreakTitle={academicBreakTitle}
     />
   );
 }

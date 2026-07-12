@@ -66,7 +66,11 @@ export function buildWeeklySummaryPayload(
     : null;
 
   const parts = [statusText, unestimated, pressureText].filter(Boolean);
-  const body = `This week is ${summary.status === "heavy" || summary.status === "overloaded" ? "heavy" : "active"}. ${parts.join(". ")}.`;
+  const classHint =
+    summary.fixedMinutes > 0
+      ? `${Math.round(summary.fixedMinutes / 60)}h of scheduled commitments`
+      : null;
+  const body = `This week is ${summary.status === "heavy" || summary.status === "overloaded" ? "heavy" : "active"}. ${[classHint, ...parts].filter(Boolean).join(". ")}.`;
 
   return {
     title: "LifeOS weekly outlook",

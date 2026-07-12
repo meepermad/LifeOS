@@ -302,6 +302,39 @@ Scheduled and iPhone push will not work until:
 - Deadline/overload warnings are grouped and deduplicated conservatively
 - Database timestamps remain UTC; scheduling logic uses `America/Chicago`
 
+## Academics (Phase 10)
+
+### Data model
+
+- `academic_terms`, `courses`, `class_meetings`, `academic_exceptions`
+- Materialized class occurrences live on the **School** calendar as `events` with `source=academic`
+- Stable identity: `external_event_id = academic:{class_meeting_id}:{YYYY-MM-DD}`
+
+### Recurrence design
+
+Class meetings store recurrence definitions (weekdays, times, effective date range). On save/reconcile, occurrences are materialized into `events` so existing `listEventsInRange()`, workload, planning, and conflict detection continue to work unchanged.
+
+### Exceptions and breaks
+
+- `break` / `no_classes` suppress class materialization without blocking availability by default
+- `university_closed` suppresses classes and blocks availability for planning
+- User-edited preset exceptions (`is_user_modified=true`) are never overwritten on re-apply
+
+### K-State preset
+
+- Registry: `src/lib/academic/presets/`
+- Source: https://www.k-state.edu/registrar/students/calendar/
+- PDF revision tracked in preset metadata (`revisionDate: 2026-02-12`)
+
+### Canvas candidates
+
+Canvas class VEVENTs are scanned for recurring patterns. Candidates are presented in `/school` for review; nothing is auto-converted.
+
+### Known limitations
+
+- Canvas class events may overlap School materialized classes until candidates are reviewed
+- Academic date phrases in assistant require an active term for full resolution
+
 ## Future: Email integration (Phase 11)
 
 - Process only approved senders/folders

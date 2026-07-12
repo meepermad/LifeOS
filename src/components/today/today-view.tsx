@@ -12,7 +12,8 @@ import type { WorkloadSummary } from "@/lib/planning/types";
 import type { PlanningRunWithProposals } from "@/lib/data/planning";
 import { EventListItem } from "@/components/events/event-list";
 import { PlanningControls } from "@/components/planning/planning-controls";
-import { WorkloadSummaryCard } from "@/components/workload/workload-summary-card";import { EmptyState, SectionCard } from "@/components/forms/ui";
+import { WorkloadSummaryCard } from "@/components/workload/workload-summary-card";
+import { EmptyState, SectionCard } from "@/components/forms/ui";
 
 export function TodayView({
   events,
@@ -28,6 +29,7 @@ export function TodayView({
   tasksError,
   workloadError,
   planningError,
+  academicBreakTitle,
 }: {
   events: EventWithCalendar[];
   dueToday: TaskRow[];
@@ -42,6 +44,7 @@ export function TodayView({
   tasksError?: string | null;
   workloadError?: string | null;
   planningError?: string | null;
+  academicBreakTitle?: string | null;
 }) {
   const today = nowInAppTimezone();
   const todayKey = getAppLocalDateKey(today);
@@ -60,7 +63,13 @@ export function TodayView({
           <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
           <p className="mt-1 text-sm text-muted">
             {formatAppDate(today, "EEEE, MMMM d")}
+            {academicBreakTitle ? ` · ${academicBreakTitle}` : ""}
           </p>
+          {academicBreakTitle && (
+            <Link href="/school" className="mt-1 inline-block text-xs text-accent">
+              School calendar
+            </Link>
+          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Link

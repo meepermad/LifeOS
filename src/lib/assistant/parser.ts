@@ -7,6 +7,9 @@ import {
   parseTimeRange,
 } from "@/lib/assistant/date-parser";
 import {
+  parseAcademicCommands,
+} from "@/lib/assistant/academic-parser";
+import {
   parseAddWorkShift,
   parseCopyWorkSchedule,
   parseDeleteWorkShift,
@@ -484,6 +487,7 @@ export function parseCommand(
     parseCreateTask,
     parseCreateEvent,
     parseAvailability,
+    parseAcademicCommands,
     parseAgenda,
     parseWorkload,
     parseGeneratePlan,

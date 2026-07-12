@@ -138,6 +138,12 @@ export default async function SettingsPage() {
         >
           Manage imports →
         </Link>
+        <Link
+          href="/school"
+          className="mt-2 inline-block text-sm text-accent hover:text-accent-hover"
+        >
+          School & semester setup →
+        </Link>
       </SectionCard>
 
       <SectionCard

@@ -1,11 +1,24 @@
 import {
+  buildScheduleSummary,
+  formatAcademicPeriodResponse,
+  formatClassesResponse,
+  formatDueItemsResponse,
+  formatNextClassResponse,
+} from "@/lib/assistant/schedule-summary";
+import { resolveAcademicPeriodRange } from "@/lib/academic/resolve-period";
+import { suggestIntentsForUnknown } from "@/lib/assistant/paraphrase";
+import { extractRecognizedDatePhrase } from "@/lib/assistant/academic-parser";
+import type { DateRangeRef } from "@/lib/assistant/intents";
+import {
   addAppDays,
   getAppLocalDateKey,
   getDayBoundsInUtc,
   getTodayBoundsUtc,
   getWeekBounds,
   nowInAppTimezone,
+  toUtcEndOfAppLocalDay,
   toUtcFromAppLocal,
+  toUtcFromAppLocalDate,
 } from "@/lib/dates/timezone";
 import { findAvailabilitySlots } from "@/lib/assistant/availability-finder";
 import { matchTasks } from "@/lib/assistant/entity-matcher";
@@ -73,6 +86,16 @@ export type ExecutorResponse = {
   };
 };
 
+async function resolveRangeBounds(
+  range: DateRangeRef,
+): Promise<{ start: Date; end: Date; label: string }> {
+  return {
+    start: toUtcFromAppLocalDate(range.startDateKey),
+    end: toUtcEndOfAppLocalDay(range.endDateKey),
+    label: range.label,
+  };
+}
+
 async function resolveAgendaBoundsAsync(
   command: Extract<ParsedCommand, { intent: "show_agenda" }>,
 ): Promise<{ start: Date; end: Date; label: string }> {
@@ -97,6 +120,10 @@ async function resolveAgendaBoundsAsync(
       0,
     );
     return { start, end, label: "this week" };
+  }
+
+  if (command.scope === "range" && command.range) {
+    return resolveRangeBounds(command.range);
   }
 
   const dateKey = command.dateKey ?? getAppLocalDateKey(now);
@@ -167,12 +194,133 @@ export async function executeReadOnly(
         structuredPayload: {},
       };
 
-    case "unknown":
+    case "unknown": {
+      const phrase = extractRecognizedDatePhrase(command.raw);
+      const suggestions = suggestIntentsForUnknown(command.raw);
       return {
-        content: formatUnknownResponse(command.raw),
+        content: formatUnknownResponse(command.raw, suggestions, phrase),
+        messageType: "text",
+        structuredPayload: { suggestions, recognizedPhrase: phrase },
+      };
+    }
+
+    case "schedule_summary": {
+      const bounds = await resolveRangeBounds(command.range);
+      const events = await listEventsInRange(
+        bounds.start.toISOString(),
+        bounds.end.toISOString(),
+      );
+      const tasks = await listTasks({ status: "active" });
+      const rangeTasks = tasks.filter((task) => {
+        if (!task.due_at) return false;
+        const dueKey = task.due_at.slice(0, 10);
+        return (
+          dueKey >= command.range.startDateKey &&
+          dueKey <= command.range.endDateKey
+        );
+      });
+      const workload = await getCachedWorkload({ periodType: "week" });
+      const formatted = buildScheduleSummary({
+        label: bounds.label,
+        events,
+        tasks: rangeTasks,
+        workload,
+        startDateKey: command.range.startDateKey,
+        endDateKey: command.range.endDateKey,
+      });
+      return {
+        content: formatted.content,
+        messageType: "text",
+        structuredPayload: formatted.payload,
+      };
+    }
+
+    case "show_next_class": {
+      const now = new Date();
+      const events = await listEventsInRange(
+        now.toISOString(),
+        new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      );
+      const nextClass = events
+        .filter(
+          (event) =>
+            event.event_type === "class" &&
+            event.status !== "cancelled" &&
+            new Date(event.start_at) > now,
+        )
+        .sort((a, b) => a.start_at.localeCompare(b.start_at))[0] ?? null;
+      return {
+        content: formatNextClassResponse(nextClass),
+        messageType: "text",
+        structuredPayload: { eventId: nextClass?.id ?? null },
+      };
+    }
+
+    case "show_classes": {
+      const bounds = await resolveRangeBounds(command.range);
+      const events = await listEventsInRange(
+        bounds.start.toISOString(),
+        bounds.end.toISOString(),
+      );
+      return {
+        content: formatClassesResponse({
+          label: bounds.label,
+          events,
+        }),
         messageType: "text",
         structuredPayload: {},
       };
+    }
+
+    case "query_academic_period": {
+      const resolved =
+        command.range.startDateKey === "1970-01-01"
+          ? await resolveAcademicPeriodRange(command.periodKind)
+          : command.range;
+      if (!resolved) {
+        return {
+          content: `I could not find ${command.periodKind} on your academic calendar. Set up a term in School settings.`,
+          messageType: "text",
+          structuredPayload: {},
+        };
+      }
+      return {
+        content: formatAcademicPeriodResponse({
+          label: resolved.label,
+          startDateKey: resolved.startDateKey,
+          endDateKey: resolved.endDateKey,
+        }),
+        messageType: "text",
+        structuredPayload: { periodKind: command.periodKind },
+      };
+    }
+
+    case "show_due_items": {
+      const bounds = await resolveRangeBounds(command.range);
+      const events = await listEventsInRange(
+        bounds.start.toISOString(),
+        bounds.end.toISOString(),
+      );
+      const deadlineEvents = events.filter((e) => e.event_type === "deadline");
+      const tasks = await listTasks({ status: "active" });
+      const rangeTasks = tasks.filter((task) => {
+        if (!task.due_at) return false;
+        const dueKey = task.due_at.slice(0, 10);
+        return (
+          dueKey >= command.range.startDateKey &&
+          dueKey <= command.range.endDateKey
+        );
+      });
+      return {
+        content: formatDueItemsResponse({
+          label: bounds.label,
+          tasks: rangeTasks,
+          deadlineEvents,
+        }),
+        messageType: "text",
+        structuredPayload: {},
+      };
+    }
 
     case "show_agenda": {
       const bounds = await resolveAgendaBoundsAsync(command);

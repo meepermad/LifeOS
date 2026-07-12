@@ -32,6 +32,7 @@ function buildEvent(overrides: Partial<EventWithCalendar> = {}): EventWithCalend
     id: "event-1",
     user_id: "user-1",
     calendar_id: "calendar-1",
+    class_meeting_id: null,
     external_event_id: null,
     title: "Meeting",
     description: null,

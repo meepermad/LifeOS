@@ -14,6 +14,8 @@ import {
   nowInAppTimezone,
 } from "@/lib/dates/timezone";
 import { buildProposalInputs } from "@/lib/planning/mappers";
+import { toPlanningEvent } from "@/lib/planning/mappers";
+import { getAcademicBlockingEvents } from "@/lib/academic/planning-blocks";
 import { generatePlanningProposals } from "@/lib/planning/proposal-generator";
 import { computePlanningInputHash } from "@/lib/planning/proposal-hash";
 import type {
@@ -97,7 +99,7 @@ export async function loadPlanningInputs(
   const period = await resolvePeriod(request);
   const now = new Date();
 
-  const [events, tasks, availabilityRules, preferences, activeRun] =
+  const [events, tasks, availabilityRules, preferences, activeRun, academicBlocks] =
     await Promise.all([
       listEventsInRange(
         period.periodStart.toISOString(),
@@ -107,6 +109,7 @@ export async function loadPlanningInputs(
       listAvailabilityRules(),
       getPlanningPreferences(),
       getActivePlanningRun(request),
+      getAcademicBlockingEvents(period.dayKeys),
     ]);
 
   const acceptedProposalIntervals =
@@ -127,20 +130,26 @@ export async function loadPlanningInputs(
         endAt: p.proposed_end_at,
       })) ?? [];
 
-  return buildProposalInputs({
-    events,
-    tasks,
-    availabilityRules,
-    preferences,
-    weekStartsOn: period.weekStartsOn,
-    now,
-    periodType: request.periodType,
-    periodStart: period.periodStart,
-    periodEnd: period.periodEnd,
-    dayKeys: period.dayKeys,
-    pendingProposalIntervals,
-    acceptedProposalIntervals,
-  });
+  return {
+    ...buildProposalInputs({
+      events,
+      tasks,
+      availabilityRules,
+      preferences,
+      weekStartsOn: period.weekStartsOn,
+      now,
+      periodType: request.periodType,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+      dayKeys: period.dayKeys,
+      pendingProposalIntervals,
+      acceptedProposalIntervals,
+    }),
+    events: [
+      ...events.map(toPlanningEvent),
+      ...academicBlocks,
+    ],
+  };
 }
 
 export async function generateAndStorePlanningRun(

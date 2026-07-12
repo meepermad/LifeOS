@@ -12,6 +12,10 @@ import {
 } from "@/lib/assistant/executor";
 import { parseCommand } from "@/lib/assistant/parser";
 import { validateParsedCommand, assistantMessageSchema } from "@/lib/assistant/schemas";
+import { logParserOutcome } from "@/lib/data/assistant-parser-outcomes";
+import { extractRecognizedDatePhrase } from "@/lib/assistant/academic-parser";
+import { suggestIntentsForUnknown } from "@/lib/assistant/paraphrase";
+import { formatUnknownResponse } from "@/lib/assistant/responses";
 import type { ClarificationState, ParsedCommand } from "@/lib/assistant/intents";
 import {
   archiveThreadAndStartFresh,
@@ -236,15 +240,31 @@ export async function sendAssistantMessageAction(
     }
 
     if (parseResult.kind === "unknown") {
+      const phrase = extractRecognizedDatePhrase(parseResult.raw);
+      const suggestions = suggestIntentsForUnknown(parseResult.raw);
+      await logParserOutcome({
+        normalizedIntent: null,
+        success: false,
+        clarificationReason: "unrecognized_command",
+        recognizedDatePhrase: phrase,
+      });
       await insertMessage({
         threadId: thread.id,
         role: "assistant",
         messageType: "text",
-        content: `I don't understand "${parseResult.raw}". Type help to see supported commands.`,
-        structuredPayload: {},
+        content: formatUnknownResponse(parseResult.raw, suggestions, phrase),
+        structuredPayload: { suggestions, recognizedPhrase: phrase },
       });
       revalidateAssistantPaths();
       return { success: true, data: await loadChatState(thread.id) };
+    }
+
+    if (parseResult.kind === "command") {
+      await logParserOutcome({
+        normalizedIntent: parseResult.command.intent,
+        success: true,
+        recognizedDatePhrase: extractRecognizedDatePhrase(parsedText),
+      });
     }
 
     await processParsedCommand(

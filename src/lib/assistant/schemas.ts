@@ -4,16 +4,50 @@ import type { ParsedCommand } from "@/lib/assistant/intents";
 const dateKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timeSchema = z.string().regex(/^\d{2}:\d{2}$/);
 
+const dateRangeRefSchema = z.object({
+  phrase: z.string(),
+  startDateKey: dateKeySchema,
+  endDateKey: dateKeySchema,
+  label: z.string(),
+});
+
 const showAgendaSchema = z.object({
   intent: z.literal("show_agenda"),
-  scope: z.enum(["today", "tomorrow", "date", "week"]),
+  scope: z.enum(["today", "tomorrow", "date", "week", "range"]),
   dateKey: dateKeySchema.optional(),
+  range: dateRangeRefSchema.optional(),
 });
 
 const showWorkloadSchema = z.object({
   intent: z.literal("show_workload"),
-  scope: z.enum(["today", "tomorrow", "date", "week"]),
+  scope: z.enum(["today", "tomorrow", "date", "week", "range"]),
   dateKey: dateKeySchema.optional(),
+  range: dateRangeRefSchema.optional(),
+});
+
+const scheduleSummarySchema = z.object({
+  intent: z.literal("schedule_summary"),
+  range: dateRangeRefSchema,
+});
+
+const showNextClassSchema = z.object({
+  intent: z.literal("show_next_class"),
+});
+
+const showClassesSchema = z.object({
+  intent: z.literal("show_classes"),
+  range: dateRangeRefSchema,
+});
+
+const queryAcademicPeriodSchema = z.object({
+  intent: z.literal("query_academic_period"),
+  range: dateRangeRefSchema,
+  periodKind: z.string(),
+});
+
+const showDueItemsSchema = z.object({
+  intent: z.literal("show_due_items"),
+  range: dateRangeRefSchema,
 });
 
 const findAvailabilitySchema = z.object({
@@ -23,6 +57,7 @@ const findAvailabilitySchema = z.object({
   endDateKey: dateKeySchema.optional(),
   beforeDateKey: dateKeySchema.optional(),
   timeOfDay: z.enum(["morning", "afternoon", "evening"]).optional(),
+  range: dateRangeRefSchema.optional(),
 });
 
 const generatePlanSchema = z.object({
@@ -143,6 +178,11 @@ const unknownSchema = z.object({
 export const parsedCommandSchema = z.discriminatedUnion("intent", [
   showAgendaSchema,
   showWorkloadSchema,
+  scheduleSummarySchema,
+  showNextClassSchema,
+  showClassesSchema,
+  queryAcademicPeriodSchema,
+  showDueItemsSchema,
   findAvailabilitySchema,
   generatePlanSchema,
   createEventSchema,

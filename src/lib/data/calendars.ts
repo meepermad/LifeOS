@@ -85,6 +85,11 @@ export async function getWorkCalendar(): Promise<CalendarRow | null> {
   return calendars.find((calendar) => calendar.name === "Work") ?? null;
 }
 
+export async function getSchoolCalendar(): Promise<CalendarRow | null> {
+  const calendars = await listCalendars();
+  return calendars.find((calendar) => calendar.name === "School") ?? null;
+}
+
 export async function getCanvasCalendar(): Promise<CalendarRow> {
   const user = await requireAllowedUser();
   const supabase = await createClient();

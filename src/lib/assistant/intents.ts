@@ -1,6 +1,13 @@
-export type AgendaScope = "today" | "tomorrow" | "date" | "week";
+export type AgendaScope = "today" | "tomorrow" | "date" | "week" | "range";
 
-export type WorkloadScope = "today" | "tomorrow" | "date" | "week";
+export type WorkloadScope = "today" | "tomorrow" | "date" | "week" | "range";
+
+export type DateRangeRef = {
+  phrase: string;
+  startDateKey: string;
+  endDateKey: string;
+  label: string;
+};
 
 export type PlanPeriodType = "day" | "week";
 
@@ -13,8 +20,13 @@ export type ProposalSelectionMode =
   | "period_all";
 
 export type ParsedCommand =
-  | { intent: "show_agenda"; scope: AgendaScope; dateKey?: string }
-  | { intent: "show_workload"; scope: WorkloadScope; dateKey?: string }
+  | { intent: "show_agenda"; scope: AgendaScope; dateKey?: string; range?: DateRangeRef }
+  | { intent: "show_workload"; scope: WorkloadScope; dateKey?: string; range?: DateRangeRef }
+  | { intent: "schedule_summary"; range: DateRangeRef }
+  | { intent: "show_next_class" }
+  | { intent: "show_classes"; range: DateRangeRef }
+  | { intent: "query_academic_period"; range: DateRangeRef; periodKind: string }
+  | { intent: "show_due_items"; range: DateRangeRef }
   | {
       intent: "find_availability";
       durationMinutes: number;
@@ -22,6 +34,7 @@ export type ParsedCommand =
       endDateKey?: string;
       beforeDateKey?: string;
       timeOfDay?: TimeOfDayPreference;
+      range?: DateRangeRef;
     }
   | {
       intent: "generate_plan";
@@ -166,6 +179,11 @@ export const WRITE_INTENTS = new Set([
 export const READ_ONLY_INTENTS = new Set([
   "show_agenda",
   "show_workload",
+  "schedule_summary",
+  "show_next_class",
+  "show_classes",
+  "query_academic_period",
+  "show_due_items",
   "find_availability",
   "generate_plan",
   "help",

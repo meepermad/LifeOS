@@ -21,6 +21,12 @@ export const HELP_TEXT = `I understand these planning commands:
 • Complete Network Security Lab 4
 • Accept all proposals for today
 • Reject proposal 2 / Regenerate this week's plan
+• What does next week look like?
+• When is my next class?
+• What classes do I have tomorrow?
+• When is fall break?
+• What is due during spring break?
+• How much free time do I have next week?
 • Show my work schedule this week
 • How many hours am I working this week?
 • I work Monday 2–10 and Thursday 10–6:30
@@ -31,8 +37,24 @@ export const HELP_TEXT = `I understand these planning commands:
 
 I only act on commands I recognize. Write actions require your confirmation.`;
 
-export function formatUnknownResponse(raw: string): string {
-  return `I don't understand "${raw}". Type help to see supported commands.`;
+export function formatUnknownResponse(
+  raw: string,
+  suggestions?: string[],
+  recognizedPhrase?: string | null,
+): string {
+  const lines = [`I don't understand "${raw}".`];
+  if (recognizedPhrase) {
+    lines.push(`I recognized "${recognizedPhrase}" as a date phrase.`);
+  }
+  if (suggestions && suggestions.length > 0) {
+    lines.push("Did you mean:");
+    for (const suggestion of suggestions) {
+      lines.push(`• ${suggestion}`);
+    }
+  } else {
+    lines.push("Type help to see supported commands.");
+  }
+  return lines.join("\n");
 }
 
 export function formatAgendaResponse(input: {

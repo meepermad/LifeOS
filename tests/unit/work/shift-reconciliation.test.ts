@@ -8,6 +8,7 @@ function makeEvent(overrides: Partial<EventWithCalendar>): EventWithCalendar {
     id: "evt-1",
     user_id: "user-1",
     calendar_id: "cal-work",
+    class_meeting_id: null,
     external_event_id: "work-shift:2026-07-13",
     title: "Work",
     description: null,

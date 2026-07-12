@@ -36,6 +36,7 @@ export const EVENT_SOURCES: EventSource[] = [
   "canvas",
   "workforce_import",
   "email",
+  "academic",
 ];
 
 export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
@@ -88,6 +89,13 @@ export const DEFAULT_CALENDARS = [
   },
   {
     name: "Work",
+    source: "manual" as const,
+    is_writable: true,
+    is_visible: true,
+    sync_enabled: false,
+  },
+  {
+    name: "School",
     source: "manual" as const,
     is_writable: true,
     is_visible: true,

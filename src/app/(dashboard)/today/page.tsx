@@ -14,6 +14,12 @@ import { getActiveTerm } from "@/lib/academic/active-term";
 import { listAcademicTerms } from "@/lib/data/academic/terms";
 import { listExceptionsForTerm } from "@/lib/data/academic/exceptions";
 import { getAppLocalDateKey, getTodayBoundsUtc, nowInAppTimezone } from "@/lib/dates/timezone";
+import { getCompletedReviewSession, getDailyPriorities } from "@/lib/data/reviews";
+import { countBlocksAwaitingFeedback } from "@/lib/planning/awaiting-feedback";
+import {
+  countInboxTasks,
+  detectDailyPeriod,
+} from "@/lib/reviews/loaders";
 import type { RelatedCanvasTask } from "@/components/events/event-list";
 import type { TaskRow } from "@/types/domain";
 
@@ -47,6 +53,13 @@ export default async function TodayPage() {
   let planningRun: Awaited<ReturnType<typeof getActivePlanningRun>> = null;
   let planningError: string | null = null;
   let academicBreakTitle: string | null = null;
+  let dailyPriorities: Awaited<ReturnType<typeof getDailyPriorities>> = [];
+  let inboxCount = 0;
+  let awaitingFeedbackCount = 0;
+  let reviewPrompt: {
+    period: "morning" | "evening";
+    completed: boolean;
+  } | null = null;
 
   const bounds = getTodayBoundsUtc();
   const todayKey = getAppLocalDateKey(nowInAppTimezone());
@@ -109,6 +122,27 @@ export default async function TodayPage() {
   const allTasks = await listTasks({ status: "active", sort: "due_date" });
   const relatedTasksByEventId = buildRelatedTasksByEventId(allTasks);
 
+  try {
+    const period = detectDailyPeriod();
+    const reviewType =
+      period === "morning" ? "morning_daily" : "evening_daily";
+    const [priorities, inbox, feedback, completedReview] = await Promise.all([
+      getDailyPriorities(todayKey),
+      countInboxTasks(),
+      countBlocksAwaitingFeedback(),
+      getCompletedReviewSession({ reviewType, reviewDate: todayKey }),
+    ]);
+    dailyPriorities = priorities;
+    inboxCount = inbox;
+    awaitingFeedbackCount = feedback;
+    reviewPrompt = {
+      period,
+      completed: completedReview != null,
+    };
+  } catch {
+    reviewPrompt = null;
+  }
+
   return (
     <TodayView
       events={events}
@@ -125,6 +159,10 @@ export default async function TodayPage() {
       workloadError={workloadError}
       planningError={planningError}
       academicBreakTitle={academicBreakTitle}
+      reviewPrompt={reviewPrompt}
+      dailyPriorities={dailyPriorities}
+      inboxCount={inboxCount}
+      awaitingFeedbackCount={awaitingFeedbackCount}
     />
   );
 }

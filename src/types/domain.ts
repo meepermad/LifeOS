@@ -2,22 +2,49 @@ import type { Database } from "@/types/database.types";
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"];
+export type WorkflowState = "actionable" | "waiting" | "someday" | "backlog";
 export type SyncStateRow = Database["public"]["Tables"]["sync_states"]["Row"];
 export type CalendarRow = Database["public"]["Tables"]["calendars"]["Row"];
 export type EventRow = Database["public"]["Tables"]["events"]["Row"];
 export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 export type TaskRow = Omit<
   Database["public"]["Tables"]["tasks"]["Row"],
-  "planning_estimate_override" | "course_id"
+  | "planning_estimate_override"
+  | "course_id"
+  | "workflow_state"
+  | "inbox_at"
+  | "waiting_reason"
+  | "waiting_follow_up_at"
+  | "deferred_until_at"
+  | "recurrence_template_id"
+  | "recurrence_occurrence_key"
+  | "parent_task_id"
 > & {
   planning_estimate_override?: string | null;
   course_id?: string | null;
+  workflow_state?: string;
+  inbox_at?: string | null;
+  waiting_reason?: string | null;
+  waiting_follow_up_at?: string | null;
+  deferred_until_at?: string | null;
+  recurrence_template_id?: string | null;
+  recurrence_occurrence_key?: string | null;
+  parent_task_id?: string | null;
 };
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type AvailabilityRuleRow =
   Database["public"]["Tables"]["availability_rules"]["Row"];
 export type PlanningPreferencesRow =
-  Database["public"]["Tables"]["planning_preferences"]["Row"];
+  Database["public"]["Tables"]["planning_preferences"]["Row"] & {
+    morning_review_enabled?: boolean;
+    morning_review_time?: string | null;
+    evening_review_enabled?: boolean;
+    evening_review_time?: string | null;
+    weekly_review_reminder_enabled?: boolean;
+    waiting_followup_enabled?: boolean;
+    overdue_decision_reminder_enabled?: boolean;
+    planning_feedback_reminder_enabled?: boolean;
+  };
 
 export type ConnectionProvider = "canvas_ics" | "microsoft";
 export type ConnectionStatus =
@@ -82,7 +109,13 @@ export type NotificationType =
   | "weekly_summary"
   | "deadline_warning"
   | "overload_warning"
-  | "stale_timer";
+  | "stale_timer"
+  | "morning_review"
+  | "evening_review"
+  | "weekly_review"
+  | "waiting_followup"
+  | "overdue_decision"
+  | "planning_feedback";
 
 export type NotificationDeliveryStatus =
   | "pending"

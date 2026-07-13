@@ -11,6 +11,7 @@ import {
   getEligibleDatesForTask,
   isUnestimatedTask,
 } from "@/lib/planning/task-allocation";
+import { annotateSplitRecommendations } from "@/lib/planning/proposal-explanations";
 import {
   getFutureConfirmedFocusMinutesForTask,
   getUnscheduledRemainingMinutes,
@@ -273,7 +274,7 @@ export function generatePlanningProposals(
     .map((task) => task.id);
 
   return {
-    proposals,
+    proposals: annotateSplitRecommendations(proposals),
     totalProposedMinutes,
     fullyScheduledTaskIds,
     partiallyScheduledTaskIds,

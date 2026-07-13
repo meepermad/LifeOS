@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { InboxCapture } from "@/components/inbox/inbox-capture";
 
 const QUICK_ADD_OPTIONS = [
   { href: "/events/new", label: "Event" },
@@ -14,6 +15,7 @@ const QUICK_ADD_OPTIONS = [
 
 export function QuickAddMenu() {
   const [open, setOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
   return (
     <div className="relative">
@@ -28,9 +30,30 @@ export function QuickAddMenu() {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 min-w-44 rounded-xl border border-border bg-surface p-2 shadow-xl"
+          className="absolute right-0 top-full z-50 mt-2 min-w-72 rounded-xl border border-border bg-surface p-2 shadow-xl"
           role="menu"
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setCaptureOpen((value) => !value);
+            }}
+            className="block w-full rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-surface-elevated"
+          >
+            Inbox capture
+          </button>
+          {captureOpen && (
+            <div className="border-t border-border px-2 py-3">
+              <InboxCapture
+                compact
+                onCaptured={() => {
+                  setCaptureOpen(false);
+                  setOpen(false);
+                }}
+              />
+            </div>
+          )}
           {QUICK_ADD_OPTIONS.map((option) => (
             <Link
               key={option.href + option.label}

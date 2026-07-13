@@ -4,6 +4,9 @@ const ALLOWED_NOTIFICATION_ROUTES = [
   "/tasks",
   "/settings",
   "/chat",
+  "/inbox",
+  "/review/daily",
+  "/review/weekly",
 ] as const;
 
 export type AllowedNotificationRoute =

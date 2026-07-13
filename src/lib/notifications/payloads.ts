@@ -160,6 +160,144 @@ export function buildStaleTimerPayload(
   };
 }
 
+export function buildMorningReviewPayload(
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS morning review",
+      body: "Your morning review is ready.",
+      tag: "lifeos-morning-review",
+      url: "/review/daily",
+    };
+  }
+
+  return {
+    title: "LifeOS morning review",
+    body: "Start your morning review to set priorities for today.",
+    tag: "lifeos-morning-review",
+    url: "/review/daily",
+  };
+}
+
+export function buildEveningReviewPayload(
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS evening review",
+      body: "Your evening review is ready.",
+      tag: "lifeos-evening-review",
+      url: "/review/daily?mode=evening",
+    };
+  }
+
+  return {
+    title: "LifeOS evening review",
+    body: "Wrap up today and plan unfinished work in your evening review.",
+    tag: "lifeos-evening-review",
+    url: "/review/daily?mode=evening",
+  };
+}
+
+export function buildWeeklyReviewPayload(
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS weekly review",
+      body: "Your weekly review is ready.",
+      tag: "lifeos-weekly-review",
+      url: "/review/weekly",
+    };
+  }
+
+  return {
+    title: "LifeOS weekly review",
+    body: "Take a few minutes to review last week and set priorities for the week ahead.",
+    tag: "lifeos-weekly-review",
+    url: "/review/weekly",
+  };
+}
+
+export function buildWaitingFollowupPayload(
+  taskCount: number,
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS waiting follow-up",
+      body: "Tasks you are waiting on need a follow-up.",
+      tag: "lifeos-waiting-followup",
+      url: "/tasks",
+    };
+  }
+
+  const label =
+    taskCount === 1
+      ? "One waiting task needs follow-up"
+      : `${taskCount} waiting tasks need follow-up`;
+
+  return {
+    title: "LifeOS waiting follow-up",
+    body: `${label}.`,
+    tag: "lifeos-waiting-followup",
+    url: "/tasks",
+  };
+}
+
+export function buildOverdueDecisionPayload(
+  taskCount: number,
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS overdue tasks",
+      body: "Overdue tasks need a decision.",
+      tag: "lifeos-overdue-decision",
+      url: "/today",
+    };
+  }
+
+  const label =
+    taskCount === 1
+      ? "One overdue task needs a decision"
+      : `${taskCount} overdue tasks need decisions`;
+
+  return {
+    title: "LifeOS overdue tasks",
+    body: `${label}.`,
+    tag: "lifeos-overdue-decision",
+    url: "/today",
+  };
+}
+
+export function buildPlanningFeedbackPayload(
+  blockCount: number,
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS planning feedback",
+      body: "Past focus blocks need your feedback.",
+      tag: "lifeos-planning-feedback",
+      url: "/today",
+    };
+  }
+
+  const label =
+    blockCount === 1
+      ? "One focus block needs feedback"
+      : `${blockCount} focus blocks need feedback`;
+
+  return {
+    title: "LifeOS planning feedback",
+    body: `${label}.`,
+    tag: "lifeos-planning-feedback",
+    url: "/today",
+  };
+}
+
 export function buildFallbackPayload(): NotificationPayload {
   return {
     title: "LifeOS",

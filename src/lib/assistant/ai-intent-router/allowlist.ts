@@ -9,6 +9,14 @@ export const ALLOWED_READ_INTENTS = [
   "query_academic_period",
   "show_work_schedule",
   "show_work_hours",
+  "show_inbox",
+  "start_morning_review",
+  "start_weekly_review",
+  "help_plan_today",
+  "show_pending_decisions",
+  "show_recurring_tasks",
+  "find_time_unscheduled",
+  "show_awaiting_feedback",
 ] as const;
 
 export const ALLOWED_WRITE_INTENTS = [
@@ -17,6 +25,14 @@ export const ALLOWED_WRITE_INTENTS = [
   "add_work_shift",
   "update_work_shift",
   "delete_work_shift",
+  "create_inbox_task",
+  "defer_task",
+  "mark_waiting",
+  "create_recurring_task",
+  "skip_recurrence_occurrence",
+  "pause_recurring_task",
+  "preview_rollover",
+  "keep_task_overdue",
 ] as const;
 
 export const ALLOWED_META_INTENTS = ["unsupported"] as const;

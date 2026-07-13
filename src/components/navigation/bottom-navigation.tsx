@@ -6,12 +6,16 @@ import { useState } from "react";
 
 const PRIMARY_NAV = [
   { href: "/today", label: "Today", icon: "☀" },
+  { href: "/inbox", label: "Inbox", icon: "📥" },
   { href: "/calendar", label: "Calendar", icon: "▦" },
   { href: "/tasks", label: "Tasks", icon: "☑" },
   { href: "/chat", label: "Chat", icon: "◉" },
 ] as const;
 
 const MORE_NAV = [
+  { href: "/inbox", label: "Inbox" },
+  { href: "/review/daily", label: "Daily Review" },
+  { href: "/review/weekly", label: "Weekly Review" },
   { href: "/work", label: "Work" },
   { href: "/school", label: "School" },
   { href: "/insights", label: "Insights" },

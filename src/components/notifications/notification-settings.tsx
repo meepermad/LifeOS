@@ -281,6 +281,17 @@ export function NotificationSettings({
       weeklyNotificationTime: String(formData.get("weeklyNotificationTime") ?? ""),
       quietHoursStart: String(formData.get("quietHoursStart") ?? ""),
       quietHoursEnd: String(formData.get("quietHoursEnd") ?? ""),
+      morningReviewEnabled: formData.get("morningReviewEnabled") === "on",
+      morningReviewTime: String(formData.get("morningReviewTime") ?? ""),
+      eveningReviewEnabled: formData.get("eveningReviewEnabled") === "on",
+      eveningReviewTime: String(formData.get("eveningReviewTime") ?? ""),
+      weeklyReviewReminderEnabled:
+        formData.get("weeklyReviewReminderEnabled") === "on",
+      waitingFollowupEnabled: formData.get("waitingFollowupEnabled") === "on",
+      overdueDecisionReminderEnabled:
+        formData.get("overdueDecisionReminderEnabled") === "on",
+      planningFeedbackReminderEnabled:
+        formData.get("planningFeedbackReminderEnabled") === "on",
     };
 
     startTransition(async () => {
@@ -468,6 +479,103 @@ export function NotificationSettings({
           />
           Overload warnings
         </label>
+
+        <div className="space-y-3 border-t border-border/70 pt-4">
+          <p className="text-sm font-medium text-foreground">Review reminders</p>
+          <p className="text-xs text-muted">
+            Opt-in reminders for daily and weekly reviews. Disabled by default.
+          </p>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="morningReviewEnabled"
+              defaultChecked={preferences.morning_review_enabled ?? false}
+              className="h-4 w-4 rounded border-border"
+            />
+            Morning review reminder
+          </label>
+          <FormField label="Morning review time" htmlFor="morningReviewTime">
+            <input
+              id="morningReviewTime"
+              name="morningReviewTime"
+              type="time"
+              defaultValue={splitTimeForForm(
+                preferences.morning_review_time ?? "07:00",
+              )}
+              className={inputClassName}
+            />
+          </FormField>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="eveningReviewEnabled"
+              defaultChecked={preferences.evening_review_enabled ?? false}
+              className="h-4 w-4 rounded border-border"
+            />
+            Evening review reminder
+          </label>
+          <FormField label="Evening review time" htmlFor="eveningReviewTime">
+            <input
+              id="eveningReviewTime"
+              name="eveningReviewTime"
+              type="time"
+              defaultValue={splitTimeForForm(
+                preferences.evening_review_time ?? "20:00",
+              )}
+              className={inputClassName}
+            />
+          </FormField>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="weeklyReviewReminderEnabled"
+              defaultChecked={preferences.weekly_review_reminder_enabled ?? false}
+              className="h-4 w-4 rounded border-border"
+            />
+            Weekly review reminder (uses weekly day/time above)
+          </label>
+        </div>
+
+        <div className="space-y-3 border-t border-border/70 pt-4">
+          <p className="text-sm font-medium text-foreground">Workflow reminders</p>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="waitingFollowupEnabled"
+              defaultChecked={preferences.waiting_followup_enabled ?? false}
+              className="h-4 w-4 rounded border-border"
+            />
+            Waiting task follow-ups
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="overdueDecisionReminderEnabled"
+              defaultChecked={
+                preferences.overdue_decision_reminder_enabled ?? false
+              }
+              className="h-4 w-4 rounded border-border"
+            />
+            Overdue task decisions
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="planningFeedbackReminderEnabled"
+              defaultChecked={
+                preferences.planning_feedback_reminder_enabled ?? false
+              }
+              className="h-4 w-4 rounded border-border"
+            />
+            Planning block feedback
+          </label>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Quiet hours start" htmlFor="quietHoursStart">

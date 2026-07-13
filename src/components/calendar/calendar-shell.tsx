@@ -11,6 +11,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type {
   DateSelectArg,
   DatesSetArg,
+  EventApi,
   EventClickArg,
   EventDropArg,
   EventInput,
@@ -21,12 +22,14 @@ import "@/components/calendar/calendar.css";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { EventInspector } from "@/components/calendar/event-inspector";
+import { TaskShelf, type ShelfEligibleTask } from "@/components/calendar/task-shelf";
 import {
   listEventsInRangeAction,
   moveCalendarEventAction,
   saveCalendarFilterPrefsAction,
   saveCalendarViewPreferenceAction,
 } from "@/lib/actions/calendar";
+import { scheduleTaskFromShelfAction } from "@/lib/actions/task-shelf";
 import {
   calendarViewToFullCalendar,
   fullCalendarViewToCalendarView,
@@ -49,6 +52,7 @@ type CalendarShellProps = {
   initialFilters: CalendarFilterPrefs;
   initialEvents: EventInput[];
   initialEventRecords: EventWithCalendar[];
+  initialShelfTasks?: ShelfEligibleTask[];
 };
 
 function useIsMobile(): boolean {
@@ -73,6 +77,7 @@ export function CalendarShell({
   initialFilters,
   initialEvents,
   initialEventRecords,
+  initialShelfTasks = [],
 }: CalendarShellProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,6 +204,35 @@ export function CalendarShell({
     });
   };
 
+  const handleEventReceive = (info: { event: EventApi; revert: () => void }) => {
+    const taskId = info.event.extendedProps.shelfTaskId as string | undefined;
+    if (!taskId) {
+      info.revert();
+      return;
+    }
+
+    const revert = info.revert;
+    startTransition(async () => {
+      const result = await scheduleTaskFromShelfAction({
+        taskId,
+        startAt: info.event.start!.toISOString(),
+        endAt: info.event.end!.toISOString(),
+      });
+
+      if (!result.success) {
+        handleMutationFailure(result, revert);
+        return;
+      }
+
+      info.event.remove();
+      setMutationError(null);
+      setShelfMessage(`Created planning proposal. Accept it from Today or Week.`);
+      router.refresh();
+    });
+  };
+
+  const [shelfMessage, setShelfMessage] = useState<string | null>(null);
+
   const handleEventDrop = (info: EventDropArg) => {
     const revert = info.revert;
     startTransition(async () => {
@@ -277,6 +311,27 @@ export function CalendarShell({
 
         <CalendarFilters filters={filters} onChange={handleFilterChange} />
 
+        <div className="mb-3">
+          <TaskShelf
+            initialTasks={initialShelfTasks}
+            onProposalCreated={() => {
+              const api = calendarRef.current?.getApi();
+              if (!api) return;
+              const range = api.view;
+              fetchEvents(
+                range.activeStart.toISOString(),
+                range.activeEnd.toISOString(),
+              );
+            }}
+          />
+        </div>
+
+        {shelfMessage && (
+          <p className="mb-3 text-sm text-muted" role="status">
+            {shelfMessage}
+          </p>
+        )}
+
         {mutationError && (
           <div
             className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground"
@@ -312,6 +367,7 @@ export function CalendarShell({
             height="auto"
             events={events}
             editable
+            droppable
             selectable
             selectMirror
             nowIndicator
@@ -330,6 +386,7 @@ export function CalendarShell({
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
+            eventReceive={handleEventReceive}
             eventResize={handleEventResize}
             select={handleDateSelect}
             moreLinkClick="day"

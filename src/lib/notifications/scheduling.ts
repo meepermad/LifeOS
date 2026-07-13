@@ -9,8 +9,14 @@ import {
 import {
   buildDailyAgendaPayload,
   buildDeadlineWarningPayload,
+  buildEveningReviewPayload,
+  buildMorningReviewPayload,
   buildOverloadWarningPayload,
+  buildOverdueDecisionPayload,
+  buildPlanningFeedbackPayload,
   buildStaleTimerPayload,
+  buildWaitingFollowupPayload,
+  buildWeeklyReviewPayload,
   buildWeeklySummaryPayload,
 } from "@/lib/notifications/payloads";
 import { sendNotificationToUser } from "@/lib/notifications/sender";
@@ -18,6 +24,12 @@ import {
   calculateWorkloadWithEventCount,
   fetchDeadlineTasks,
 } from "@/lib/notifications/workload-admin";
+import {
+  countAwaitingPlanningFeedback,
+  countOverdueNeedingDecision,
+  countWaitingFollowupsDue,
+  hasCompletedReviewSession,
+} from "@/lib/notifications/workflow-queries";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { PlanningPreferencesRow } from "@/types/domain";
@@ -61,6 +73,48 @@ export function buildStaleTimerDedupKey(
 
 export function buildTestDedupKey(userId: string, minuteBucket: string): string {
   return `test:${userId}:${minuteBucket}`;
+}
+
+export function buildMorningReviewDedupKey(
+  userId: string,
+  dateKey: string,
+): string {
+  return `morning_review:${userId}:${dateKey}`;
+}
+
+export function buildEveningReviewDedupKey(
+  userId: string,
+  dateKey: string,
+): string {
+  return `evening_review:${userId}:${dateKey}`;
+}
+
+export function buildWeeklyReviewDedupKey(
+  userId: string,
+  weekStartKey: string,
+): string {
+  return `weekly_review:${userId}:${weekStartKey}`;
+}
+
+export function buildWaitingFollowupDedupKey(
+  userId: string,
+  dateKey: string,
+): string {
+  return `waiting_followup:${userId}:${dateKey}`;
+}
+
+export function buildOverdueDecisionDedupKey(
+  userId: string,
+  dateKey: string,
+): string {
+  return `overdue_decision:${userId}:${dateKey}`;
+}
+
+export function buildPlanningFeedbackDedupKey(
+  userId: string,
+  dateKey: string,
+): string {
+  return `planning_feedback:${userId}:${dateKey}`;
 }
 
 function normalizeTime(time: string | null): string | null {
@@ -138,6 +192,12 @@ export type ProcessResult = {
   deadline: number;
   overload: number;
   staleTimer: number;
+  morningReview: number;
+  eveningReview: number;
+  weeklyReview: number;
+  waitingFollowup: number;
+  overdueDecision: number;
+  planningFeedback: number;
   skipped: number;
   errors: number;
 };
@@ -155,6 +215,12 @@ export async function processScheduledNotifications(
     deadline: 0,
     overload: 0,
     staleTimer: 0,
+    morningReview: 0,
+    eveningReview: 0,
+    weeklyReview: 0,
+    waitingFollowup: 0,
+    overdueDecision: 0,
+    planningFeedback: 0,
     skipped: 0,
     errors: 0,
   };
@@ -346,6 +412,184 @@ export async function processScheduledNotifications(
           payloadSummary: { status: summary.status },
         });
         if (sendResult.successCount > 0) result.overload += 1;
+        else if (sendResult.subscriptionCount === 0) result.skipped += 1;
+        else result.errors += 1;
+      }
+    }
+  }
+
+  const weekStartKey = getWeekStartKey(dateKey, weekStartsOn);
+
+  async function sendTimedReviewReminder(input: {
+    enabled: boolean;
+    scheduledTime: string | null | undefined;
+    dedupKey: string;
+    notificationType:
+      | "morning_review"
+      | "evening_review"
+      | "weekly_review";
+    buildPayload: () => ReturnType<typeof buildMorningReviewPayload>;
+    resultKey: "morningReview" | "eveningReview" | "weeklyReview";
+    shouldSend: () => Promise<boolean>;
+    extraDayCheck?: boolean;
+  }): Promise<void> {
+    if (!input.enabled) return;
+
+    if (input.extraDayCheck === false) return;
+
+    const existing = await findDeliveryByKey(client, input.dedupKey);
+    if (existing && isDeliveryComplete(existing.status)) {
+      result.skipped += 1;
+      return;
+    }
+
+    if (isScheduledTimeStale(input.scheduledTime ?? null, windowStart)) {
+      await markDeliverySkipped(client, {
+        userId,
+        notificationType: input.notificationType,
+        scheduledFor,
+        deduplicationKey: input.dedupKey,
+        reason: "Stale delivery window",
+      });
+      result.skipped += 1;
+      return;
+    }
+
+    if (
+      !isScheduledTimeInWindow(
+        input.scheduledTime ?? null,
+        windowStart,
+        windowEnd,
+      )
+    ) {
+      return;
+    }
+
+    if (!(await input.shouldSend())) {
+      return;
+    }
+
+    const payload = input.buildPayload();
+    const sendResult = await sendNotificationToUser(client, {
+      userId,
+      notificationType: input.notificationType,
+      payload,
+      deduplicationKey: input.dedupKey,
+      scheduledFor,
+    });
+
+    if (sendResult.successCount > 0) {
+      result[input.resultKey] += 1;
+    } else if (sendResult.subscriptionCount === 0) {
+      result.skipped += 1;
+    } else {
+      result.errors += 1;
+    }
+  }
+
+  await sendTimedReviewReminder({
+    enabled: preferences.morning_review_enabled === true,
+    scheduledTime: preferences.morning_review_time ?? "07:00",
+    dedupKey: buildMorningReviewDedupKey(userId, dateKey),
+    notificationType: "morning_review",
+    buildPayload: () => buildMorningReviewPayload(privacyMode),
+    resultKey: "morningReview",
+    shouldSend: () =>
+      hasCompletedReviewSession(client, userId, "morning_daily", {
+        dateKey,
+      }).then((completed) => !completed),
+  });
+
+  await sendTimedReviewReminder({
+    enabled: preferences.evening_review_enabled === true,
+    scheduledTime: preferences.evening_review_time ?? "20:00",
+    dedupKey: buildEveningReviewDedupKey(userId, dateKey),
+    notificationType: "evening_review",
+    buildPayload: () => buildEveningReviewPayload(privacyMode),
+    resultKey: "eveningReview",
+    shouldSend: () =>
+      hasCompletedReviewSession(client, userId, "evening_daily", {
+        dateKey,
+      }).then((completed) => !completed),
+  });
+
+  await sendTimedReviewReminder({
+    enabled: preferences.weekly_review_reminder_enabled === true,
+    scheduledTime: preferences.weekly_notification_time,
+    dedupKey: buildWeeklyReviewDedupKey(userId, weekStartKey),
+    notificationType: "weekly_review",
+    buildPayload: () => buildWeeklyReviewPayload(privacyMode),
+    resultKey: "weeklyReview",
+    extraDayCheck: dayOfWeek === preferences.weekly_notification_day,
+    shouldSend: () =>
+      hasCompletedReviewSession(client, userId, "weekly", {
+        weekStartKey,
+      }).then((completed) => !completed),
+  });
+
+  if (preferences.waiting_followup_enabled) {
+    const dedupKey = buildWaitingFollowupDedupKey(userId, dateKey);
+    const existing = await findDeliveryByKey(client, dedupKey);
+
+    if (!existing || !isDeliveryComplete(existing.status)) {
+      const taskCount = await countWaitingFollowupsDue(client, userId, now);
+      if (taskCount > 0) {
+        const payload = buildWaitingFollowupPayload(taskCount, privacyMode);
+        const sendResult = await sendNotificationToUser(client, {
+          userId,
+          notificationType: "waiting_followup",
+          payload,
+          deduplicationKey: dedupKey,
+          scheduledFor,
+          payloadSummary: { taskCount },
+        });
+        if (sendResult.successCount > 0) result.waitingFollowup += 1;
+        else if (sendResult.subscriptionCount === 0) result.skipped += 1;
+        else result.errors += 1;
+      }
+    }
+  }
+
+  if (preferences.overdue_decision_reminder_enabled) {
+    const dedupKey = buildOverdueDecisionDedupKey(userId, dateKey);
+    const existing = await findDeliveryByKey(client, dedupKey);
+
+    if (!existing || !isDeliveryComplete(existing.status)) {
+      const taskCount = await countOverdueNeedingDecision(client, userId, now);
+      if (taskCount > 0) {
+        const payload = buildOverdueDecisionPayload(taskCount, privacyMode);
+        const sendResult = await sendNotificationToUser(client, {
+          userId,
+          notificationType: "overdue_decision",
+          payload,
+          deduplicationKey: dedupKey,
+          scheduledFor,
+          payloadSummary: { taskCount },
+        });
+        if (sendResult.successCount > 0) result.overdueDecision += 1;
+        else if (sendResult.subscriptionCount === 0) result.skipped += 1;
+        else result.errors += 1;
+      }
+    }
+  }
+
+  if (preferences.planning_feedback_reminder_enabled) {
+    const dedupKey = buildPlanningFeedbackDedupKey(userId, dateKey);
+    const existing = await findDeliveryByKey(client, dedupKey);
+
+    if (!existing || !isDeliveryComplete(existing.status)) {
+      const blockCount = await countAwaitingPlanningFeedback(client, userId, now);
+      if (blockCount > 0) {
+        const payload = buildPlanningFeedbackPayload(blockCount, privacyMode);
+        const sendResult = await sendNotificationToUser(client, {
+          userId,
+          notificationType: "planning_feedback",
+          payload,
+          deduplicationKey: dedupKey,
+          scheduledFor,
+          payloadSummary: { blockCount },
+        });
+        if (sendResult.successCount > 0) result.planningFeedback += 1;
         else if (sendResult.subscriptionCount === 0) result.skipped += 1;
         else result.errors += 1;
       }

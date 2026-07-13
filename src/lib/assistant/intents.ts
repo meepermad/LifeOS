@@ -132,6 +132,44 @@ export type ParsedCommand =
   | { intent: "show_workload_trends" }
   | { intent: "explain_planning_estimate"; taskTitle?: string }
   | { intent: "use_original_estimate"; taskTitle?: string }
+  | { intent: "create_inbox_task"; title: string }
+  | { intent: "show_inbox" }
+  | { intent: "start_morning_review" }
+  | { intent: "start_weekly_review" }
+  | { intent: "help_plan_today" }
+  | { intent: "show_pending_decisions" }
+  | { intent: "defer_task"; taskId?: string; taskTitle?: string; untilDateKey: string }
+  | {
+      intent: "mark_waiting";
+      taskId?: string;
+      taskTitle?: string;
+      reason: string;
+      followUpDateKey?: string;
+    }
+  | {
+      intent: "create_recurring_task";
+      title: string;
+      byWeekday: number[];
+      firstOccurrenceDate: string;
+      defaultEstimateMinutes?: number;
+      dueTime?: string;
+    }
+  | {
+      intent: "skip_recurrence_occurrence";
+      templateId?: string;
+      templateTitle?: string;
+      occurrenceDate: string;
+    }
+  | {
+      intent: "pause_recurring_task";
+      templateId?: string;
+      templateTitle?: string;
+    }
+  | { intent: "show_recurring_tasks" }
+  | { intent: "find_time_unscheduled" }
+  | { intent: "show_awaiting_feedback" }
+  | { intent: "preview_rollover"; targetDateKey: string }
+  | { intent: "keep_task_overdue"; taskId?: string; taskTitle?: string }
   | { intent: "unknown"; raw: string };
 
 export type PartialCommand = Partial<
@@ -191,6 +229,14 @@ export const WRITE_INTENTS = new Set([
   "resume_timer",
   "log_time",
   "use_original_estimate",
+  "create_inbox_task",
+  "defer_task",
+  "mark_waiting",
+  "create_recurring_task",
+  "skip_recurrence_occurrence",
+  "pause_recurring_task",
+  "preview_rollover",
+  "keep_task_overdue",
 ] as const);
 
 export const READ_ONLY_INTENTS = new Set([
@@ -211,4 +257,12 @@ export const READ_ONLY_INTENTS = new Set([
   "show_time_breakdown",
   "show_workload_trends",
   "explain_planning_estimate",
+  "show_inbox",
+  "start_morning_review",
+  "start_weekly_review",
+  "help_plan_today",
+  "show_pending_decisions",
+  "show_recurring_tasks",
+  "find_time_unscheduled",
+  "show_awaiting_feedback",
 ] as const);

@@ -8,6 +8,7 @@ import {
   type ParsedTaskInput,
   type TaskFormInput,
 } from "@/lib/validation/tasks";
+import { mapTaskRow, mapTaskRows } from "@/lib/tasks/map";
 import type { TaskRow, TaskStatus } from "@/types/domain";
 
 export type TaskSort = "due_date" | "priority";
@@ -17,7 +18,11 @@ export type TaskFilter =
   | "overdue"
   | "due_this_week"
   | "at_risk"
-  | "canvas";
+  | "canvas"
+  | "inbox"
+  | "waiting"
+  | "deferred"
+  | "recurring";
 
 export async function listTasks(options?: {
   status?: TaskStatus | "active" | "all";
@@ -60,6 +65,7 @@ export async function listTasks(options?: {
   if (options?.filter) {
     const { isDueToday, isOverdue, getWeekBounds, getAppLocalDateKey } =
       await import("@/lib/dates/timezone");
+    const { isDeferredHidden, isInboxTask } = await import("@/lib/tasks/triage");
     const now = new Date();
     const { start, end } = getWeekBounds(now, 0);
     const weekStartKey = getAppLocalDateKey(start);
@@ -80,13 +86,21 @@ export async function listTasks(options?: {
           return options.atRiskIds?.has(task.id) ?? false;
         case "canvas":
           return task.source === "canvas";
+        case "inbox":
+          return isInboxTask(task);
+        case "waiting":
+          return task.workflow_state === "waiting";
+        case "deferred":
+          return isDeferredHidden(task, now);
+        case "recurring":
+          return task.recurrence_template_id != null;
         default:
           return true;
       }
     });
   }
 
-  return tasks;
+  return mapTaskRows(tasks);
 }
 
 export async function getTaskById(taskId: string): Promise<TaskRow> {
@@ -104,7 +118,7 @@ export async function getTaskById(taskId: string): Promise<TaskRow> {
     throw new DatabaseError("Task not found");
   }
 
-  return data;
+  return mapTaskRow(data);
 }
 
 export async function createTask(
@@ -139,7 +153,7 @@ export async function createTask(
     throw new DatabaseError("Failed to create task");
   }
 
-  return data;
+  return mapTaskRow(data);
 }
 
 export async function updateTask(
@@ -175,7 +189,7 @@ export async function updateTask(
     throw new DatabaseError("Failed to update task");
   }
 
-  return data;
+  return mapTaskRow(data);
 }
 
 export async function setTaskCompletion(
@@ -217,7 +231,7 @@ export async function setTaskCompletion(
     if (error || !data) {
       throw new DatabaseError("Failed to reopen task");
     }
-    return data;
+    return mapTaskRow(data);
   }
 
   let actualMinutes: number | undefined;
@@ -310,7 +324,7 @@ export async function setTaskCompletion(
     throw new DatabaseError("Failed to update task status");
   }
 
-  return data;
+  return mapTaskRow(data);
 }
 
 export async function correctCompletionSnapshot(input: {
@@ -384,7 +398,7 @@ export async function correctCompletionSnapshot(input: {
     throw new DatabaseError("Failed to update task after correction");
   }
 
-  return task;
+  return mapTaskRow(task);
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
@@ -469,7 +483,7 @@ export async function createTaskFromCanvasDeadline(input: {
     throw new DatabaseError("Failed to update Canvas task estimate");
   }
 
-  return data;
+  return mapTaskRow(data);
 }
 
 export async function updateCanvasTaskEstimate(input: {
@@ -503,7 +517,7 @@ async function findLinkedCanvasTaskForEvent(
   }
 
   if (byEvent) {
-    return byEvent;
+    return mapTaskRow(byEvent);
   }
 
   if (!externalEventId) {
@@ -522,7 +536,7 @@ async function findLinkedCanvasTaskForEvent(
     throw new DatabaseError("Failed to load linked task");
   }
 
-  return byExternal;
+  return byExternal ? mapTaskRow(byExternal) : null;
 }
 
 export type CanvasTaskForSync = TaskRow;
@@ -548,7 +562,7 @@ export async function listCanvasTasksForSync(
     throw new DatabaseError("Failed to load Canvas tasks for sync");
   }
 
-  return data ?? [];
+  return mapTaskRows(data ?? []);
 }
 
 export async function listCanvasTasksByRelatedEventIds(
@@ -572,7 +586,7 @@ export async function listCanvasTasksByRelatedEventIds(
     throw new DatabaseError("Failed to load Canvas tasks by related event");
   }
 
-  return data ?? [];
+  return mapTaskRows(data ?? []);
 }
 
 export type CanvasTaskSyncInsert = {

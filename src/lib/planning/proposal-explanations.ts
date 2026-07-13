@@ -1,5 +1,6 @@
-import { formatAppDate } from "@/lib/dates/timezone";
-import type { ProposalExplanation } from "@/lib/planning/types";
+import { formatAppDate, getAppLocalDateKey, nowInAppTimezone } from "@/lib/dates/timezone";
+import { formatMinutes } from "@/lib/planning/summaries";
+import type { FocusBlockProposal, ProposalExplanation } from "@/lib/planning/types";
 
 export function buildProposalExplanation(input: {
   reason: string;
@@ -39,7 +40,68 @@ const REASON_INTROS: Record<string, string> = {
   splittable_spread: "Scheduled here to spread this task across available days",
   non_splittable_fit: "Scheduled here because the full block fits this open interval",
   only_available_slot: "Scheduled here because it was the only feasible open interval",
+  shelf_manual: "Scheduled from the task shelf",
 };
+
+function relativeDayLabel(dateKey: string, now = nowInAppTimezone()): string {
+  const todayKey = getAppLocalDateKey(now);
+  if (dateKey === todayKey) return "tonight";
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateKey === getAppLocalDateKey(tomorrow)) return "tomorrow";
+  return formatAppDate(dateKey, "EEEE");
+}
+
+export function formatSplitRecommendation(
+  parts: Array<{ minutes: number; dateKey: string }>,
+  now = nowInAppTimezone(),
+): string {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) {
+    const part = parts[0];
+    return `${formatMinutes(part.minutes)} ${relativeDayLabel(part.dateKey, now)}`;
+  }
+
+  return parts
+    .map(
+      (part) =>
+        `${formatMinutes(part.minutes)} ${relativeDayLabel(part.dateKey, now)}`,
+    )
+    .join(", ");
+}
+
+export function annotateSplitRecommendations(
+  proposals: FocusBlockProposal[],
+): FocusBlockProposal[] {
+  const byTask = new Map<string, FocusBlockProposal[]>();
+
+  for (const proposal of proposals) {
+    const list = byTask.get(proposal.taskId) ?? [];
+    list.push(proposal);
+    byTask.set(proposal.taskId, list);
+  }
+
+  return proposals.map((proposal) => {
+    const siblings = byTask.get(proposal.taskId) ?? [];
+    if (siblings.length <= 1) return proposal;
+
+    const splitRecommendation = formatSplitRecommendation(
+      siblings.map((item) => ({
+        minutes: item.proposedMinutes,
+        dateKey: getAppLocalDateKey(item.proposedStartAt),
+      })),
+    );
+
+    return {
+      ...proposal,
+      explanation: {
+        ...proposal.explanation,
+        reason: "splittable_spread",
+        splitRecommendation,
+      },
+    };
+  });
+}
 
 export function formatProposalExplanation(
   explanation: ProposalExplanation,
@@ -70,6 +132,10 @@ export function formatProposalExplanation(
       .map((key) => PREFERENCE_LABELS[key] ?? key.replaceAll("_", " "))
       .join(", ");
     parts.push(`Note: could not fully honor ${labels}.`);
+  }
+
+  if (explanation.splitRecommendation) {
+    parts.push(`Suggested split: ${explanation.splitRecommendation}.`);
   }
 
   return parts.join(" ");

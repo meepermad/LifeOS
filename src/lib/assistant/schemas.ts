@@ -170,6 +170,71 @@ const copyWorkScheduleSchema = z.object({
 
 const helpSchema = z.object({ intent: z.literal("help") });
 const clearChatSchema = z.object({ intent: z.literal("clear_chat") });
+const createInboxTaskSchema = z.object({
+  intent: z.literal("create_inbox_task"),
+  title: z.string().min(1).max(500),
+});
+const showInboxSchema = z.object({ intent: z.literal("show_inbox") });
+const startMorningReviewSchema = z.object({
+  intent: z.literal("start_morning_review"),
+});
+const startWeeklyReviewSchema = z.object({
+  intent: z.literal("start_weekly_review"),
+});
+const helpPlanTodaySchema = z.object({ intent: z.literal("help_plan_today") });
+const showPendingDecisionsSchema = z.object({
+  intent: z.literal("show_pending_decisions"),
+});
+const deferTaskSchema = z.object({
+  intent: z.literal("defer_task"),
+  taskId: z.string().uuid().optional(),
+  taskTitle: z.string().min(1).optional(),
+  untilDateKey: dateKeySchema,
+});
+const markWaitingSchema = z.object({
+  intent: z.literal("mark_waiting"),
+  taskId: z.string().uuid().optional(),
+  taskTitle: z.string().min(1).optional(),
+  reason: z.string().min(1),
+  followUpDateKey: dateKeySchema.optional(),
+});
+const createRecurringTaskSchema = z.object({
+  intent: z.literal("create_recurring_task"),
+  title: z.string().min(1).max(500),
+  byWeekday: z.array(z.number().int().min(0).max(6)).min(1),
+  firstOccurrenceDate: dateKeySchema,
+  defaultEstimateMinutes: z.number().int().positive().optional(),
+  dueTime: timeSchema.optional(),
+});
+const skipRecurrenceOccurrenceSchema = z.object({
+  intent: z.literal("skip_recurrence_occurrence"),
+  templateId: z.string().uuid().optional(),
+  templateTitle: z.string().min(1).optional(),
+  occurrenceDate: dateKeySchema,
+});
+const pauseRecurringTaskSchema = z.object({
+  intent: z.literal("pause_recurring_task"),
+  templateId: z.string().uuid().optional(),
+  templateTitle: z.string().min(1).optional(),
+});
+const showRecurringTasksSchema = z.object({
+  intent: z.literal("show_recurring_tasks"),
+});
+const findTimeUnscheduledSchema = z.object({
+  intent: z.literal("find_time_unscheduled"),
+});
+const showAwaitingFeedbackSchema = z.object({
+  intent: z.literal("show_awaiting_feedback"),
+});
+const previewRolloverSchema = z.object({
+  intent: z.literal("preview_rollover"),
+  targetDateKey: dateKeySchema,
+});
+const keepTaskOverdueSchema = z.object({
+  intent: z.literal("keep_task_overdue"),
+  taskId: z.string().uuid().optional(),
+  taskTitle: z.string().min(1).optional(),
+});
 const unknownSchema = z.object({
   intent: z.literal("unknown"),
   raw: z.string(),
@@ -200,6 +265,22 @@ export const parsedCommandSchema = z.discriminatedUnion("intent", [
   copyWorkScheduleSchema,
   helpSchema,
   clearChatSchema,
+  createInboxTaskSchema,
+  showInboxSchema,
+  startMorningReviewSchema,
+  startWeeklyReviewSchema,
+  helpPlanTodaySchema,
+  showPendingDecisionsSchema,
+  deferTaskSchema,
+  markWaitingSchema,
+  createRecurringTaskSchema,
+  skipRecurrenceOccurrenceSchema,
+  pauseRecurringTaskSchema,
+  showRecurringTasksSchema,
+  findTimeUnscheduledSchema,
+  showAwaitingFeedbackSchema,
+  previewRolloverSchema,
+  keepTaskOverdueSchema,
   unknownSchema,
 ]);
 

@@ -7,6 +7,7 @@ import { listEventsInRange } from "@/lib/data/events";
 import { applyCalendarFilters } from "@/lib/calendar/filters";
 import type { CalendarViewId } from "@/lib/calendar/types";
 import { getAppLocalDateKey, nowInAppTimezone } from "@/lib/dates/timezone";
+import { getShelfEligibleTasks } from "@/lib/planning/task-shelf";
 import { CalendarClient } from "@/components/calendar/calendar-client";
 
 type CalendarPageProps = {
@@ -60,6 +61,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   ]);
 
   const filteredRecords = applyCalendarFilters(rawEvents, filterPrefs);
+  const shelfTasks = await getShelfEligibleTasks();
 
   return (
     <CalendarClient
@@ -72,6 +74,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       initialFilters={filterPrefs}
       initialEvents={events}
       initialEventRecords={filteredRecords}
+      initialShelfTasks={shelfTasks}
     />
   );
 }

@@ -136,6 +136,17 @@ Store `CRON_SECRET` in **Supabase Vault** or the supported secure dashboard mech
 | Path | `/api/cron/canvas-sync` |
 | Authorization | `Bearer <CRON_SECRET>` |
 
+### Recurring task materialization
+
+| Setting | Value |
+|---------|-------|
+| Schedule | `15 2 * * *` |
+| Method | `POST` |
+| Path | `/api/cron/recurring-tasks` |
+| Authorization | `Bearer <CRON_SECRET>` |
+
+Runs daily to materialize upcoming recurring task instances from active templates.
+
 ### Notification processing
 
 | Setting | Value |
@@ -186,6 +197,11 @@ $headers = @{ Authorization = "Bearer $env:LIFEOS_CRON_SECRET" }
 Invoke-RestMethod `
   -Method Post `
   -Uri "https://YOUR-PRODUCTION-DOMAIN/api/cron/canvas-sync" `
+  -Headers $headers
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://YOUR-PRODUCTION-DOMAIN/api/cron/recurring-tasks" `
   -Headers $headers
 
 Invoke-RestMethod `

@@ -46,10 +46,27 @@ describe("assistant parser", () => {
   });
 
   it("parses plan today and week", () => {
+    const help = parseCommand("Help me plan today", REFERENCE);
+    expect(help.kind).toBe("command");
+    if (help.kind === "command") {
+      expect(help.command).toMatchObject({
+        intent: "help_plan_today",
+      });
+    }
+
     const today = parseCommand("Plan today", REFERENCE);
     expect(today.kind).toBe("command");
     if (today.kind === "command") {
       expect(today.command).toMatchObject({
+        intent: "generate_plan",
+        periodType: "day",
+      });
+    }
+
+    const generate = parseCommand("Generate a plan for today", REFERENCE);
+    expect(generate.kind).toBe("command");
+    if (generate.kind === "command") {
+      expect(generate.command).toMatchObject({
         intent: "generate_plan",
         periodType: "day",
       });

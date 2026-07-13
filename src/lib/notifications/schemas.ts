@@ -79,6 +79,24 @@ export const notificationPreferencesSchema = z
       .optional()
       .nullable()
       .or(z.literal("")),
+    morningReviewEnabled: z.boolean().optional(),
+    morningReviewTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+      .optional()
+      .nullable()
+      .or(z.literal("")),
+    eveningReviewEnabled: z.boolean().optional(),
+    eveningReviewTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+      .optional()
+      .nullable()
+      .or(z.literal("")),
+    weeklyReviewReminderEnabled: z.boolean().optional(),
+    waitingFollowupEnabled: z.boolean().optional(),
+    overdueDecisionReminderEnabled: z.boolean().optional(),
+    planningFeedbackReminderEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -100,6 +118,12 @@ export const NOTIFICATION_TYPES = [
   "deadline_warning",
   "overload_warning",
   "stale_timer",
+  "morning_review",
+  "evening_review",
+  "weekly_review",
+  "waiting_followup",
+  "overdue_decision",
+  "planning_feedback",
 ] as const satisfies readonly NotificationType[];
 
 export const DELIVERY_STATUSES = [

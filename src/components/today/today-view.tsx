@@ -10,6 +10,7 @@ import type { TaskRow } from "@/types/domain";
 import type { RelatedCanvasTask } from "@/components/events/event-list";
 import type { WorkloadSummary } from "@/lib/planning/types";
 import type { PlanningRunWithProposals } from "@/lib/data/planning";
+import type { DailyPriorityWithTask } from "@/lib/reviews/types";
 import { EventListItem } from "@/components/events/event-list";
 import { PlanningControls } from "@/components/planning/planning-controls";
 import { WorkloadSummaryCard } from "@/components/workload/workload-summary-card";
@@ -31,6 +32,10 @@ export function TodayView({
   workloadError,
   planningError,
   academicBreakTitle,
+  reviewPrompt,
+  dailyPriorities,
+  inboxCount,
+  awaitingFeedbackCount,
 }: {
   events: EventWithCalendar[];
   dueToday: TaskRow[];
@@ -46,6 +51,13 @@ export function TodayView({
   workloadError?: string | null;
   planningError?: string | null;
   academicBreakTitle?: string | null;
+  reviewPrompt?: {
+    period: "morning" | "evening";
+    completed: boolean;
+  } | null;
+  dailyPriorities?: DailyPriorityWithTask[];
+  inboxCount?: number;
+  awaitingFeedbackCount?: number;
 }) {
   const today = nowInAppTimezone();
   const todayKey = getAppLocalDateKey(today);
@@ -75,6 +87,87 @@ export function TodayView({
         </div>
         <QuickAddMenu />
       </div>
+
+      {(reviewPrompt && !reviewPrompt.completed) ||
+      (dailyPriorities && dailyPriorities.length > 0) ||
+      overdue.length > 0 ||
+      (inboxCount ?? 0) > 0 ||
+      (awaitingFeedbackCount ?? 0) > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {reviewPrompt && !reviewPrompt.completed && (
+            <Link
+              href={`/review/daily?period=${reviewPrompt.period}`}
+              className="rounded-xl border border-accent/40 bg-accent/10 p-4 transition-colors hover:border-accent"
+            >
+              <p className="text-sm font-medium text-accent">
+                {reviewPrompt.period === "morning"
+                  ? "Morning review"
+                  : "Evening review"}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Guided review ready when you are.
+              </p>
+            </Link>
+          )}
+
+          {dailyPriorities && dailyPriorities.length > 0 && (
+            <SectionCard title="Daily priorities">
+              <ul className="space-y-2">
+                {dailyPriorities.map((priority) => (
+                  <li key={priority.id}>
+                    <Link
+                      href={`/tasks/${priority.task_id}/edit`}
+                      className="text-sm text-foreground hover:text-accent"
+                    >
+                      {priority.task.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+
+          {overdue.length > 0 && (
+            <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
+              <p className="text-sm font-medium text-danger">
+                {overdue.length} overdue{" "}
+                {overdue.length === 1 ? "task" : "tasks"}
+              </p>
+              <Link
+                href="/review/daily?period=morning"
+                className="mt-1 inline-block text-xs text-accent"
+              >
+                Review in morning review
+              </Link>
+            </div>
+          )}
+
+          {(inboxCount ?? 0) > 0 && (
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-sm font-medium text-foreground">
+                {inboxCount} inbox{" "}
+                {inboxCount === 1 ? "item" : "items"}
+              </p>
+            </div>
+          )}
+
+          {(awaitingFeedbackCount ?? 0) > 0 && (
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-sm font-medium text-foreground">
+                {awaitingFeedbackCount} planning{" "}
+                {awaitingFeedbackCount === 1 ? "block" : "blocks"} need
+                feedback
+              </p>
+              <Link
+                href="/review/daily?period=evening"
+                className="mt-1 inline-block text-xs text-accent"
+              >
+                Review in evening review
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">

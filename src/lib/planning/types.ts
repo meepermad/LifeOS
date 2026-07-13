@@ -98,6 +98,7 @@ export type ProposalExplanation = {
   scheduledTaskMinutesBeforeProposal: number;
   preferenceMatches: string[];
   preferenceViolations: string[];
+  splitRecommendation?: string;
   calibration?: {
     userEstimate: number;
     effectiveEstimate: number;

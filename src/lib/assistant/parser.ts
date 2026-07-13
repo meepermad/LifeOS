@@ -21,6 +21,7 @@ import {
   parseUpdateWorkShift,
   parseWorkOffDay,
 } from "@/lib/assistant/work-schedule-parser";
+import { parsePhase13Commands } from "@/lib/assistant/phase13-parser";
 import type {
   PartialCommand,
   ParsedCommand,
@@ -485,6 +486,7 @@ export function parseCommand(
 
   const parsers: Array<(t: string, n: Date, o: ParseCommandOptions) => ParseResult> = [
     (t) => parseTimerCommands(t),
+    (t, n) => parsePhase13Commands(t, n),
     (t) => parseRegeneratePlan(t),
     (t) => parseAcceptProposals(t),
     (t) => parseRejectProposals(t),

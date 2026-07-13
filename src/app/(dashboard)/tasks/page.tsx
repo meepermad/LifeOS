@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { TaskListItem } from "@/components/tasks/task-list-item";
 import { getTaskFocusScheduleSummaries } from "@/lib/data/planning";
-import { listTasks, type TaskFilter, type TaskSort } from "@/lib/data/tasks";import { getTasksAtRiskIds } from "@/lib/data/workload";
+import { listTasks, type TaskFilter, type TaskSort } from "@/lib/data/tasks";
+import { getTasksAtRiskIds } from "@/lib/data/workload";
 import type { TaskStatus } from "@/types/domain";
 
 type TasksPageProps = {
@@ -18,6 +19,10 @@ const WORKLOAD_FILTERS: { value: TaskFilter; label: string }[] = [
   { value: "due_this_week", label: "Due this week" },
   { value: "at_risk", label: "At risk" },
   { value: "canvas", label: "Canvas" },
+  { value: "inbox", label: "Inbox" },
+  { value: "waiting", label: "Waiting" },
+  { value: "deferred", label: "Deferred" },
+  { value: "recurring", label: "Recurring" },
 ];
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {

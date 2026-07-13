@@ -79,6 +79,29 @@ import {
   executeTimerReadOnly,
   executeTimerWrite,
 } from "@/lib/assistant/timer-executor";
+import {
+  executePauseRecurringTask,
+  executeSkipRecurrenceOccurrence,
+  getAwaitingFeedbackSummary,
+  getHelpPlanTodaySummary,
+  getInboxSummary,
+  getPendingDecisionsSummary,
+  getRecurringTasksSummary,
+  getUnscheduledShelfSummary,
+  previewUnfinishedRollover,
+  recordKeepOverdueDecision,
+  resolveRecurrenceTemplate,
+  resolveTaskForUser,
+} from "@/lib/assistant/workflow-commands";
+import { createInboxTask, deferTask, markWaiting } from "@/lib/data/inbox";
+import { createRecurrenceTemplate } from "@/lib/data/recurrence";
+import {
+  spokenForAwaitingFeedback,
+  spokenForInboxCount,
+  spokenForPendingDecisions,
+  spokenForRecurringCount,
+  spokenForUnscheduledShelf,
+} from "@/lib/shortcuts/spoken";
 import { WRITE_INTENTS, READ_ONLY_INTENTS } from "@/lib/assistant/intents";
 import type { EventType } from "@/types/domain";
 import type { Json } from "@/types/database.types";
@@ -243,6 +266,60 @@ async function resolveProposalIds(
   }
 
   return { proposalIds: [], periodLabel: "today", totalMinutes: 0 };
+}
+
+async function resolveTaskForWrite(
+  command: Extract<
+    ParsedCommand,
+    { intent: "defer_task" | "mark_waiting" | "keep_task_overdue" }
+  >,
+): Promise<
+  | { task: { id: string; title: string } }
+  | { error: ExecutorResponse }
+> {
+  if (command.taskId) {
+    return {
+      task: { id: command.taskId, title: command.taskTitle ?? "task" },
+    };
+  }
+
+  const match = await resolveTaskForUser(command.taskTitle ?? "");
+  if (match.kind === "none") {
+    const err = formatError("I couldn't find an active task matching that title.");
+    return {
+      error: {
+        content: err.content,
+        messageType: "error",
+        structuredPayload: err.payload,
+      },
+    };
+  }
+
+  if (match.kind === "multiple") {
+    const formatted = formatTaskMatchClarification(
+      match.tasks.map((t) => ({ id: t.id, title: t.title })),
+    );
+    return {
+      error: {
+        content: formatted.content,
+        messageType: "clarification",
+        structuredPayload: formatted.payload,
+        clarification: {
+          partial: {
+            intent: command.intent,
+            candidates: match.tasks.map((t) => ({
+              id: t.id,
+              title: t.title,
+            })),
+          },
+          missingField: "taskMatch",
+          prompt: formatted.content,
+        },
+      },
+    };
+  }
+
+  return { task: { id: match.task.id, title: match.task.title } };
 }
 
 export async function executeReadOnly(
@@ -546,6 +623,93 @@ export async function executeReadOnly(
       };
     }
 
+    case "show_inbox": {
+      const summary = await getInboxSummary(userId);
+      const spoken = spokenForInboxCount(summary.count);
+      return {
+        content: spoken.displayText,
+        messageType: "text",
+        structuredPayload: { ...summary, spokenText: spoken.spokenText },
+      };
+    }
+
+    case "start_morning_review":
+      return {
+        content: "Opening your morning review.",
+        messageType: "text",
+        structuredPayload: { link: "/review/daily" },
+      };
+
+    case "start_weekly_review":
+      return {
+        content: "Opening your weekly review.",
+        messageType: "text",
+        structuredPayload: { link: "/review/weekly" },
+      };
+
+    case "help_plan_today": {
+      const summary = await getHelpPlanTodaySummary();
+      const content = [
+        `Today (${summary.dateKey}): ${summary.eventCount} scheduled event${summary.eventCount === 1 ? "" : "s"}.`,
+        `Workload is ${summary.workloadStatus.replace(/_/g, " ")}.`,
+        summary.inboxCount > 0
+          ? `${summary.inboxCount} inbox capture${summary.inboxCount === 1 ? "" : "s"} waiting to triage.`
+          : "Inbox is clear.",
+        "Open Today to generate or accept planning proposals.",
+      ].join("\n");
+      return {
+        content,
+        messageType: "text",
+        structuredPayload: { ...summary },
+      };
+    }
+
+    case "show_pending_decisions": {
+      const summary = await getPendingDecisionsSummary(userId);
+      const spoken = spokenForPendingDecisions(summary);
+      return {
+        content: spoken.displayText,
+        messageType: "text",
+        structuredPayload: { ...summary, spokenText: spoken.spokenText },
+      };
+    }
+
+    case "show_awaiting_feedback": {
+      const summary = await getAwaitingFeedbackSummary(userId);
+      const spoken = spokenForAwaitingFeedback(summary.count);
+      return {
+        content: spoken.displayText,
+        messageType: "text",
+        structuredPayload: { ...summary, spokenText: spoken.spokenText },
+      };
+    }
+
+    case "show_recurring_tasks": {
+      const summary = await getRecurringTasksSummary();
+      const spoken = spokenForRecurringCount(summary.count);
+      const lines = [
+        spoken.displayText,
+        ...(summary.templates.length > 0
+          ? ["", "Active templates:", ...summary.templates.map((t) => `• ${t}`)]
+          : []),
+      ];
+      return {
+        content: lines.join("\n"),
+        messageType: "text",
+        structuredPayload: { ...summary, spokenText: spoken.spokenText },
+      };
+    }
+
+    case "find_time_unscheduled": {
+      const summary = await getUnscheduledShelfSummary();
+      const spoken = spokenForUnscheduledShelf(summary.count);
+      return {
+        content: spoken.displayText,
+        messageType: "text",
+        structuredPayload: { ...summary, spokenText: spoken.spokenText },
+      };
+    }
+
     default: {
       const timerResult = await executeTimerReadOnly(command);
       if (timerResult) return timerResult;
@@ -778,6 +942,162 @@ export async function buildWritePreview(
         actionPreview: {
           actionType: command.intent,
           proposedPayload: { command, source: "assistant" },
+        },
+      };
+    }
+
+    case "create_inbox_task": {
+      const content = `Add "${command.title}" to your inbox for triage.`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/inbox" },
+        actionPreview: {
+          actionType: "create_inbox_task",
+          proposedPayload: { command },
+        },
+      };
+    }
+
+    case "defer_task": {
+      const resolved = await resolveTaskForWrite(command);
+      if ("error" in resolved) return resolved.error;
+      const task = resolved.task;
+      const content = `Defer "${task.title}" until ${command.untilDateKey}.`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/tasks" },
+        actionPreview: {
+          actionType: "defer_task",
+          proposedPayload: {
+            command: { ...command, taskId: task.id, taskTitle: task.title },
+          },
+        },
+      };
+    }
+
+    case "mark_waiting": {
+      const resolved = await resolveTaskForWrite(command);
+      if ("error" in resolved) return resolved.error;
+      const task = resolved.task;
+      const content = `Mark "${task.title}" as waiting (${command.reason}).`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/tasks" },
+        actionPreview: {
+          actionType: "mark_waiting",
+          proposedPayload: {
+            command: { ...command, taskId: task.id, taskTitle: task.title },
+          },
+        },
+      };
+    }
+
+    case "create_recurring_task": {
+      const content = `Create recurring task "${command.title}".`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/tasks/recurring" },
+        actionPreview: {
+          actionType: "create_recurring_task",
+          proposedPayload: { command },
+        },
+      };
+    }
+
+    case "pause_recurring_task": {
+      const template = await resolveRecurrenceTemplate(command.templateTitle);
+      if (!template) {
+        const err = formatError("I couldn't find a matching recurring template.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      const content = `Pause recurring task "${template.title}".`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/tasks/recurring" },
+        actionPreview: {
+          actionType: "pause_recurring_task",
+          proposedPayload: {
+            command: {
+              ...command,
+              templateId: template.id,
+              templateTitle: template.title,
+            },
+          },
+        },
+      };
+    }
+
+    case "skip_recurrence_occurrence": {
+      const template = await resolveRecurrenceTemplate(command.templateTitle);
+      if (!template) {
+        const err = formatError("I couldn't find a matching recurring template.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      const content = `Skip the ${command.occurrenceDate} occurrence of "${template.title}".`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/tasks/recurring" },
+        actionPreview: {
+          actionType: "skip_recurrence_occurrence",
+          proposedPayload: {
+            command: {
+              ...command,
+              templateId: template.id,
+              templateTitle: template.title,
+            },
+          },
+        },
+      };
+    }
+
+    case "preview_rollover": {
+      const preview = await previewUnfinishedRollover(command.targetDateKey);
+      const lines = [
+        `Rollover preview for ${preview.sourceDateKey}: ${preview.previews.length} task${preview.previews.length === 1 ? "" : "s"} with unscheduled work.`,
+        ...preview.previews.map(
+          (item) =>
+            `• ${item.title}: ${item.remainingMinutes ?? "?"} min → ${item.suggestedDateKey}`,
+        ),
+      ];
+      return {
+        content: lines.join("\n"),
+        messageType: "action_preview",
+        structuredPayload: { preview },
+        actionPreview: {
+          actionType: "preview_rollover",
+          proposedPayload: { command, preview },
+        },
+      };
+    }
+
+    case "keep_task_overdue": {
+      const resolved = await resolveTaskForWrite(command);
+      if ("error" in resolved) return resolved.error;
+      const task = resolved.task;
+      const content = `Keep "${task.title}" overdue without rescheduling.`;
+      return {
+        content,
+        messageType: "action_preview",
+        structuredPayload: { link: "/today" },
+        actionPreview: {
+          actionType: "keep_task_overdue",
+          proposedPayload: {
+            command: { ...command, taskId: task.id, taskTitle: task.title },
+          },
         },
       };
     }
@@ -1080,6 +1400,181 @@ export async function executeConfirmedAction(input: {
         };
       }
       const result = formatActionResult("Timer action completed.");
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "create_inbox_task": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "create_inbox_task" }>;
+      const task = await createInboxTask({ title: command.title });
+      const result = formatActionResult(`Captured "${task.title}" in your inbox.`);
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { taskId: task.id, message: result.content, link: "/inbox" },
+      };
+    }
+
+    case "defer_task": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "defer_task" }>;
+      if (!command.taskId) {
+        const err = formatError("Task not specified.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      const untilAt = toUtcEndOfAppLocalDay(command.untilDateKey).toISOString();
+      await deferTask(command.taskId, untilAt);
+      const result = formatActionResult(
+        `Deferred "${command.taskTitle ?? "task"}" until ${command.untilDateKey}.`,
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "mark_waiting": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "mark_waiting" }>;
+      if (!command.taskId) {
+        const err = formatError("Task not specified.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      const followUpAt = command.followUpDateKey
+        ? toUtcFromAppLocalDate(command.followUpDateKey).toISOString()
+        : null;
+      await markWaiting(command.taskId, {
+        reason: command.reason,
+        followUpAt,
+      });
+      const result = formatActionResult(
+        `Marked "${command.taskTitle ?? "task"}" as waiting.`,
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "create_recurring_task": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "create_recurring_task" }>;
+      const template = await createRecurrenceTemplate({
+        title: command.title,
+        recurrenceRule: {
+          frequency: "weekly",
+          interval: 1,
+          byWeekday: command.byWeekday,
+        },
+        firstOccurrenceDate: command.firstOccurrenceDate,
+        dueTime: command.dueTime ?? null,
+        defaultEstimateMinutes: command.defaultEstimateMinutes ?? null,
+      });
+      const result = formatActionResult(
+        `Created recurring task "${template.title}".`,
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: {
+          templateId: template.id,
+          message: result.content,
+          link: "/tasks/recurring",
+        },
+      };
+    }
+
+    case "pause_recurring_task": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "pause_recurring_task" }>;
+      if (!command.templateId) {
+        const err = formatError("Recurring template not specified.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      await executePauseRecurringTask(command.templateId);
+      const result = formatActionResult(
+        `Paused recurring task "${command.templateTitle ?? "template"}".`,
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "skip_recurrence_occurrence": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "skip_recurrence_occurrence" }>;
+      if (!command.templateId) {
+        const err = formatError("Recurring template not specified.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      await executeSkipRecurrenceOccurrence(
+        command.templateId,
+        command.occurrenceDate,
+      );
+      const result = formatActionResult(
+        `Skipped the ${command.occurrenceDate} occurrence.`,
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "preview_rollover": {
+      const result = formatActionResult(
+        "Rollover preview saved. Open the calendar shelf to schedule individual tasks.",
+      );
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: {
+          message: result.content,
+          preview: payload.preview,
+          link: "/calendar",
+        },
+      };
+    }
+
+    case "keep_task_overdue": {
+      const command = (payload.command ??
+        payload) as Extract<ParsedCommand, { intent: "keep_task_overdue" }>;
+      if (!command.taskId) {
+        const err = formatError("Task not specified.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      await recordKeepOverdueDecision(command.taskId);
+      const result = formatActionResult(
+        `Recorded decision to keep "${command.taskTitle ?? "task"}" overdue.`,
+      );
       return {
         content: result.content,
         messageType: "action_result",

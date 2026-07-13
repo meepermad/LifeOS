@@ -783,6 +783,44 @@ export type Database = {
           },
         ]
       }
+      daily_priorities: {
+        Row: {
+          created_at: string
+          id: string
+          priority_date: string
+          priority_level: string
+          priority_rank: number
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          priority_date: string
+          priority_level?: string
+          priority_rank: number
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          priority_date?: string
+          priority_level?: string
+          priority_rank?: number
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_priorities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           all_day: boolean
@@ -1035,12 +1073,18 @@ export type Database = {
           daily_notifications_enabled: boolean
           deadline_notifications_enabled: boolean
           deadline_warning_hours: number
+          evening_review_enabled: boolean
+          evening_review_time: string | null
           maximum_focus_block_minutes: number
           minimum_break_minutes: number
+          morning_review_enabled: boolean
+          morning_review_time: string | null
           notification_privacy_mode: string
           notifications_enabled: boolean
+          overdue_decision_reminder_enabled: boolean
           overload_notifications_enabled: boolean
           planning_buffer_percent: number
+          planning_feedback_reminder_enabled: boolean
           preferred_focus_block_minutes: number
           quiet_hours_end: string | null
           quiet_hours_start: string | null
@@ -1049,9 +1093,11 @@ export type Database = {
           travel_buffer_minutes: number
           updated_at: string
           user_id: string
+          waiting_followup_enabled: boolean
           weekly_notification_day: number
           weekly_notification_time: string | null
           weekly_notifications_enabled: boolean
+          weekly_review_reminder_enabled: boolean
         }
         Insert: {
           adaptive_planning_enabled?: boolean
@@ -1068,12 +1114,18 @@ export type Database = {
           daily_notifications_enabled?: boolean
           deadline_notifications_enabled?: boolean
           deadline_warning_hours?: number
+          evening_review_enabled?: boolean
+          evening_review_time?: string | null
           maximum_focus_block_minutes?: number
           minimum_break_minutes?: number
+          morning_review_enabled?: boolean
+          morning_review_time?: string | null
           notification_privacy_mode?: string
           notifications_enabled?: boolean
+          overdue_decision_reminder_enabled?: boolean
           overload_notifications_enabled?: boolean
           planning_buffer_percent?: number
+          planning_feedback_reminder_enabled?: boolean
           preferred_focus_block_minutes?: number
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
@@ -1082,9 +1134,11 @@ export type Database = {
           travel_buffer_minutes?: number
           updated_at?: string
           user_id: string
+          waiting_followup_enabled?: boolean
           weekly_notification_day?: number
           weekly_notification_time?: string | null
           weekly_notifications_enabled?: boolean
+          weekly_review_reminder_enabled?: boolean
         }
         Update: {
           adaptive_planning_enabled?: boolean
@@ -1101,12 +1155,18 @@ export type Database = {
           daily_notifications_enabled?: boolean
           deadline_notifications_enabled?: boolean
           deadline_warning_hours?: number
+          evening_review_enabled?: boolean
+          evening_review_time?: string | null
           maximum_focus_block_minutes?: number
           minimum_break_minutes?: number
+          morning_review_enabled?: boolean
+          morning_review_time?: string | null
           notification_privacy_mode?: string
           notifications_enabled?: boolean
+          overdue_decision_reminder_enabled?: boolean
           overload_notifications_enabled?: boolean
           planning_buffer_percent?: number
+          planning_feedback_reminder_enabled?: boolean
           preferred_focus_block_minutes?: number
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
@@ -1115,9 +1175,11 @@ export type Database = {
           travel_buffer_minutes?: number
           updated_at?: string
           user_id?: string
+          waiting_followup_enabled?: boolean
           weekly_notification_day?: number
           weekly_notification_time?: string | null
           weekly_notifications_enabled?: boolean
+          weekly_review_reminder_enabled?: boolean
         }
         Relationships: []
       }
@@ -1307,6 +1369,90 @@ export type Database = {
           p256dh?: string
           updated_at?: string
           user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      review_decisions: {
+        Row: {
+          created_at: string
+          decision_payload: Json | null
+          decision_type: string
+          id: string
+          session_id: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision_payload?: Json | null
+          decision_type: string
+          id?: string
+          session_id: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decision_payload?: Json | null
+          decision_type?: string
+          id?: string
+          session_id?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_decisions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "review_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_decisions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          review_date: string | null
+          review_type: string
+          review_week_start: string | null
+          started_at: string
+          summary_json: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          review_date?: string | null
+          review_type: string
+          review_week_start?: string | null
+          started_at?: string
+          summary_json?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          review_date?: string | null
+          review_type?: string
+          review_week_start?: string | null
+          started_at?: string
+          summary_json?: Json | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1564,6 +1710,130 @@ export type Database = {
           },
         ]
       }
+      task_recurrence_exceptions: {
+        Row: {
+          created_at: string
+          exception_type: string
+          id: string
+          moved_to_date: string | null
+          occurrence_date: string
+          override_estimate_minutes: number | null
+          override_title: string | null
+          template_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_type: string
+          id?: string
+          moved_to_date?: string | null
+          occurrence_date: string
+          override_estimate_minutes?: number | null
+          override_title?: string | null
+          template_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_type?: string
+          id?: string
+          moved_to_date?: string | null
+          occurrence_date?: string
+          override_estimate_minutes?: number | null
+          override_title?: string | null
+          template_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_recurrence_exceptions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_recurrence_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_recurrence_templates: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          default_difficulty: number
+          default_estimate_minutes: number | null
+          default_priority: number
+          description: string | null
+          due_time: string | null
+          end_date: string | null
+          first_occurrence_date: string
+          generation_horizon_days: number
+          id: string
+          is_active: boolean
+          occurrence_limit: number | null
+          paused_at: string | null
+          recurrence_rule: Json
+          recurrence_timezone: string
+          task_category: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          default_difficulty?: number
+          default_estimate_minutes?: number | null
+          default_priority?: number
+          description?: string | null
+          due_time?: string | null
+          end_date?: string | null
+          first_occurrence_date: string
+          generation_horizon_days?: number
+          id?: string
+          is_active?: boolean
+          occurrence_limit?: number | null
+          paused_at?: string | null
+          recurrence_rule: Json
+          recurrence_timezone?: string
+          task_category?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          default_difficulty?: number
+          default_estimate_minutes?: number | null
+          default_priority?: number
+          description?: string | null
+          due_time?: string | null
+          end_date?: string | null
+          first_occurrence_date?: string
+          generation_horizon_days?: number
+          id?: string
+          is_active?: boolean
+          occurrence_limit?: number | null
+          paused_at?: string | null
+          recurrence_rule?: Json
+          recurrence_timezone?: string
+          task_category?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_recurrence_templates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_time_entries: {
         Row: {
           created_at: string
@@ -1640,6 +1910,7 @@ export type Database = {
           completed_at: string | null
           course_id: string | null
           created_at: string
+          deferred_until_at: string | null
           description: string | null
           difficulty: number
           due_at: string | null
@@ -1647,9 +1918,13 @@ export type Database = {
           estimated_minutes: number | null
           external_task_id: string | null
           id: string
+          inbox_at: string | null
           minimum_block_minutes: number
+          parent_task_id: string | null
           planning_estimate_override: string | null
           priority: number
+          recurrence_occurrence_key: string | null
+          recurrence_template_id: string | null
           related_event_id: string | null
           remaining_minutes: number | null
           source: string
@@ -1660,6 +1935,9 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          waiting_follow_up_at: string | null
+          waiting_reason: string | null
+          workflow_state: string
         }
         Insert: {
           actual_minutes?: number | null
@@ -1667,6 +1945,7 @@ export type Database = {
           completed_at?: string | null
           course_id?: string | null
           created_at?: string
+          deferred_until_at?: string | null
           description?: string | null
           difficulty?: number
           due_at?: string | null
@@ -1674,9 +1953,13 @@ export type Database = {
           estimated_minutes?: number | null
           external_task_id?: string | null
           id?: string
+          inbox_at?: string | null
           minimum_block_minutes?: number
+          parent_task_id?: string | null
           planning_estimate_override?: string | null
           priority?: number
+          recurrence_occurrence_key?: string | null
+          recurrence_template_id?: string | null
           related_event_id?: string | null
           remaining_minutes?: number | null
           source?: string
@@ -1687,6 +1970,9 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          waiting_follow_up_at?: string | null
+          waiting_reason?: string | null
+          workflow_state?: string
         }
         Update: {
           actual_minutes?: number | null
@@ -1694,6 +1980,7 @@ export type Database = {
           completed_at?: string | null
           course_id?: string | null
           created_at?: string
+          deferred_until_at?: string | null
           description?: string | null
           difficulty?: number
           due_at?: string | null
@@ -1701,9 +1988,13 @@ export type Database = {
           estimated_minutes?: number | null
           external_task_id?: string | null
           id?: string
+          inbox_at?: string | null
           minimum_block_minutes?: number
+          parent_task_id?: string | null
           planning_estimate_override?: string | null
           priority?: number
+          recurrence_occurrence_key?: string | null
+          recurrence_template_id?: string | null
           related_event_id?: string | null
           remaining_minutes?: number | null
           source?: string
@@ -1714,6 +2005,9 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          waiting_follow_up_at?: string | null
+          waiting_reason?: string | null
+          workflow_state?: string
         }
         Relationships: [
           {
@@ -1721,6 +2015,20 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_recurrence_template_id_fkey"
+            columns: ["recurrence_template_id"]
+            isOneToOne: false
+            referencedRelation: "task_recurrence_templates"
             referencedColumns: ["id"]
           },
           {
@@ -1763,6 +2071,41 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "task_time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_priorities: {
+        Row: {
+          created_at: string
+          id: string
+          priority_rank: number
+          task_id: string
+          user_id: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          priority_rank: number
+          task_id: string
+          user_id: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          priority_rank?: number
+          task_id?: string
+          user_id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_priorities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

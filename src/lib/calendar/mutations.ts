@@ -5,6 +5,7 @@ import {
   updateEvent,
 } from "@/lib/data/events";
 import { getEditWorkflow } from "@/lib/calendar/authorization";
+import { moveWorkShiftFromCalendar } from "@/lib/work/calendar-shift-move";
 import type { EventWithCalendar } from "@/lib/data/events";
 import type { ParsedEventTimes } from "@/lib/validation/events";
 
@@ -94,8 +95,10 @@ export async function routeCalendarMutation(input: {
     case "planning_block":
       await movePlanningBlock(event, input.parsed);
       return { workflow };
-    case "manual":
     case "work_shift":
+      await moveWorkShiftFromCalendar(event, input.parsed);
+      return { workflow };
+    case "manual":
       await moveManualOrWorkEvent(event, input.parsed);
       return { workflow };
     case "academic":

@@ -5,7 +5,7 @@ import { getProfile } from "@/lib/data/bootstrap";
 import { listAvailabilityRules } from "@/lib/data/availability";
 import { listEventsInRange } from "@/lib/data/events";
 import { getPlanningPreferences } from "@/lib/data/preferences";
-import { listTasks } from "@/lib/data/tasks";
+import { getTaskById, listTasks } from "@/lib/data/tasks";
 import {
   getTodayBoundsUtc,
   getWeekBounds,
@@ -13,8 +13,8 @@ import {
   getAppLocalDateKey,
   nowInAppTimezone,
 } from "@/lib/dates/timezone";
-import { buildProposalInputs } from "@/lib/planning/mappers";
-import { toPlanningEvent } from "@/lib/planning/mappers";
+import { mapTaskRow } from "@/lib/tasks/map";
+import { buildProposalInputs, toPlanningEvent, toPlanningTask } from "@/lib/planning/mappers";
 import {
   applyCalibrationToPlanningTasks,
   loadCalibrationContext,
@@ -341,7 +341,7 @@ export async function listProposalsForRun(
     }
 
     for (const task of tasks ?? []) {
-      taskMap.set(task.id, task);
+      taskMap.set(task.id, mapTaskRow(task));
     }
   }
 
@@ -508,6 +508,143 @@ export async function getTaskFocusScheduleSummaries(
   }
 
   return result;
+}
+
+async function getOrCreatePlanningRunForSlot(
+  proposedStartAt: string,
+): Promise<PlanningRunRow> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const profile = await getProfile();
+  const weekStartsOn = profile.week_starts_on as 0 | 1;
+  const reference = new Date(proposedStartAt);
+  const { start, end } = getWeekBounds(reference, weekStartsOn, 0);
+
+  const existing = await getActivePlanningRun({
+    periodType: "week",
+    weekOffset: 0,
+  });
+
+  if (existing) {
+    return existing.run;
+  }
+
+  const { data: run, error } = await supabase
+    .from("planning_runs")
+    .insert({
+      user_id: user.id,
+      period_start: start.toISOString(),
+      period_end: end.toISOString(),
+      status: "generated",
+      input_hash: "shelf-manual",
+      summary: { source: "task_shelf" } as Json,
+    })
+    .select("*")
+    .single();
+
+  if (error || !run) {
+    throw new DatabaseError("Failed to create planning run");
+  }
+
+  return run;
+}
+
+export async function createShelfPlanningProposal(input: {
+  taskId: string;
+  proposedStartAt: string;
+  proposedEndAt: string;
+}): Promise<{ proposalId: string; planningRunId: string }> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const task = await getTaskById(input.taskId);
+
+  const proposedMinutes = Math.max(
+    1,
+    Math.floor(
+      (new Date(input.proposedEndAt).getTime() -
+        new Date(input.proposedStartAt).getTime()) /
+        60_000,
+    ),
+  );
+
+  const now = new Date();
+  const events = await listEventsInRange(
+    new Date(
+      new Date(input.proposedStartAt).getTime() - 7 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+    new Date(
+      new Date(input.proposedEndAt).getTime() + 7 * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+  );
+
+  const planningTask = toPlanningTask(task);
+  const { getUnscheduledRemainingMinutes } = await import(
+    "@/lib/planning/proposal-validation"
+  );
+  const { getTaskWorkloadMinutes } = await import(
+    "@/lib/planning/task-allocation"
+  );
+  const { buildProposalExplanation } = await import(
+    "@/lib/planning/proposal-explanations"
+  );
+  const { computeProposalHash } = await import("@/lib/planning/proposal-hash");
+  const { getFutureConfirmedFocusMinutesForTask } = await import(
+    "@/lib/planning/proposal-validation"
+  );
+
+  const taskRemaining = getTaskWorkloadMinutes(planningTask) ?? 0;
+  const unscheduled = getUnscheduledRemainingMinutes(
+    planningTask,
+    events.map(toPlanningEvent),
+    now,
+  );
+  const scheduledBefore = getFutureConfirmedFocusMinutesForTask(
+    planningTask,
+    events.map(toPlanningEvent),
+    now,
+  );
+
+  const explanation = buildProposalExplanation({
+    reason: "shelf_manual",
+    dueAt: task.due_at,
+    availableIntervalMinutes: proposedMinutes,
+    taskRemainingMinutes: taskRemaining,
+    scheduledTaskMinutesBeforeProposal: scheduledBefore,
+    preferenceMatches: [],
+    preferenceViolations: [],
+  });
+
+  const proposalHash = computeProposalHash({
+    taskId: task.id,
+    proposedStartAt: input.proposedStartAt,
+    proposedEndAt: input.proposedEndAt,
+    taskRemainingMinutes: taskRemaining,
+    unscheduledRemainingMinutes: unscheduled,
+  });
+
+  const run = await getOrCreatePlanningRunForSlot(input.proposedStartAt);
+
+  const { data: proposal, error } = await supabase
+    .from("planning_proposals")
+    .insert({
+      user_id: user.id,
+      planning_run_id: run.id,
+      task_id: task.id,
+      proposed_start_at: input.proposedStartAt,
+      proposed_end_at: input.proposedEndAt,
+      proposed_minutes: proposedMinutes,
+      status: "pending",
+      explanation: explanation as Json,
+      proposal_hash: proposalHash,
+    })
+    .select("id")
+    .single();
+
+  if (error || !proposal) {
+    throw new DatabaseError("Failed to create planning proposal");
+  }
+
+  return { proposalId: proposal.id, planningRunId: run.id };
 }
 
 export function proposalRowToFocusBlock(

@@ -9,6 +9,7 @@ export function buildProposalExplanation(input: {
   scheduledTaskMinutesBeforeProposal: number;
   preferenceMatches: string[];
   preferenceViolations: string[];
+  calibration?: ProposalExplanation["calibration"];
 }): ProposalExplanation {
   return {
     reason: input.reason,
@@ -18,6 +19,7 @@ export function buildProposalExplanation(input: {
     scheduledTaskMinutesBeforeProposal: input.scheduledTaskMinutesBeforeProposal,
     preferenceMatches: input.preferenceMatches,
     preferenceViolations: input.preferenceViolations,
+    calibration: input.calibration,
   };
 }
 

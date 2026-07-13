@@ -67,9 +67,14 @@ async function assertWritableEvent(
   }
 }
 
+export type ListEventsInRangeOptions = {
+  includeCancelled?: boolean;
+};
+
 export async function listEventsInRange(
   start: string,
   end: string,
+  options?: ListEventsInRangeOptions,
 ): Promise<EventWithCalendar[]> {
   const user = await requireAllowedUser();
   const supabase = await createClient();
@@ -93,15 +98,19 @@ export async function listEventsInRange(
     (calendars ?? []).map((calendar) => [calendar.id, calendar]),
   );
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("events")
     .select("*")
     .eq("user_id", user.id)
     .in("calendar_id", visibleCalendarIds)
     .lt("start_at", end)
-    .gt("end_at", start)
-    .neq("status", "cancelled")
-    .order("start_at", { ascending: true });
+    .gt("end_at", start);
+
+  if (!options?.includeCancelled) {
+    query = query.neq("status", "cancelled");
+  }
+
+  const { data, error } = await query.order("start_at", { ascending: true });
 
   if (error) {
     throw new DatabaseError("Failed to load events");

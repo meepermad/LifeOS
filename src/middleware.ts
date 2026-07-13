@@ -5,6 +5,9 @@ import { parseMiddlewareEnv } from "@/lib/security/middleware-env";
 const DASHBOARD_PATHS = [
   "/today",
   "/week",
+  "/calendar",
+  "/insights",
+  "/school",
   "/work",
   "/tasks",
   "/chat",

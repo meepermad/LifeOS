@@ -55,7 +55,9 @@ describe("tryAiIntentRouter", () => {
       userId: "user-1",
     });
     expect(result.attempted).toBe(false);
-    expect(result.reason).toBe("disabled");
+    if (!result.attempted) {
+      expect(result.reason).toBe("disabled");
+    }
   });
 
   it("skips when misconfigured", async () => {
@@ -65,14 +67,16 @@ describe("tryAiIntentRouter", () => {
       userId: "user-1",
     });
     expect(result.attempted).toBe(false);
-    expect(result.reason).toBe("misconfigured");
+    if (!result.attempted) {
+      expect(result.reason).toBe("misconfigured");
+    }
   });
 
   it("maps valid provider output to command", async () => {
     vi.mocked(createIntentRouterProvider).mockReturnValue({
       classify: vi.fn(async () => ({
-        schemaVersion: 1,
-        status: "matched",
+        schemaVersion: 1 as const,
+        status: "matched" as const,
         intent: "show_next_class",
         confidence: 0.95,
         range: null,
@@ -102,8 +106,8 @@ describe("tryAiIntentRouter", () => {
   it("returns not attempted on schema invalid output", async () => {
     vi.mocked(createIntentRouterProvider).mockReturnValue({
       classify: vi.fn(async () => ({
-        schemaVersion: 1,
-        status: "matched",
+        schemaVersion: 1 as const,
+        status: "matched" as const,
         intent: "not_a_real_intent",
         confidence: 0.95,
         range: null,
@@ -117,7 +121,9 @@ describe("tryAiIntentRouter", () => {
       userId: "user-1",
     });
     expect(result.attempted).toBe(false);
-    expect(result.reason).toBe("schema_invalid");
+    if (!result.attempted) {
+      expect(result.reason).toBe("schema_invalid");
+    }
   });
 
   it("respects daily cap", async () => {
@@ -127,6 +133,8 @@ describe("tryAiIntentRouter", () => {
       userId: "user-1",
     });
     expect(result.attempted).toBe(false);
-    expect(result.reason).toBe("daily_cap");
+    if (!result.attempted) {
+      expect(result.reason).toBe("daily_cap");
+    }
   });
 });

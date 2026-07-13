@@ -11,6 +11,7 @@ import { ACTIVE_TASK_STATUSES } from "@/lib/planning/types";
 
 export function getTaskWorkloadMinutes(task: PlanningTask): number | null {
   if (task.remainingMinutes != null) return task.remainingMinutes;
+  if (task.effectiveEstimateMinutes != null) return task.effectiveEstimateMinutes;
   if (task.estimatedMinutes != null) return task.estimatedMinutes;
   return null;
 }

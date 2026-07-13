@@ -1,3 +1,4 @@
+import { parseTimerCommands } from "@/lib/assistant/timer-parser";
 import { parseDurationMinutes } from "@/lib/assistant/duration-parser";
 import {
   extractDateFromText,
@@ -483,6 +484,7 @@ export function parseCommand(
   }
 
   const parsers: Array<(t: string, n: Date, o: ParseCommandOptions) => ParseResult> = [
+    (t) => parseTimerCommands(t),
     (t) => parseRegeneratePlan(t),
     (t) => parseAcceptProposals(t),
     (t) => parseRejectProposals(t),

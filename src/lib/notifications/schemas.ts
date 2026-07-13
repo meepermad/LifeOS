@@ -99,6 +99,7 @@ export const NOTIFICATION_TYPES = [
   "weekly_summary",
   "deadline_warning",
   "overload_warning",
+  "stale_timer",
 ] as const satisfies readonly NotificationType[];
 
 export const DELIVERY_STATUSES = [

@@ -74,6 +74,11 @@ import {
   getWorkScheduleResponse,
   previewWorkCommand,
 } from "@/lib/work/assistant-commands";
+import {
+  buildTimerWritePreview,
+  executeTimerReadOnly,
+  executeTimerWrite,
+} from "@/lib/assistant/timer-executor";
 import { WRITE_INTENTS, READ_ONLY_INTENTS } from "@/lib/assistant/intents";
 import type { EventType } from "@/types/domain";
 import type { Json } from "@/types/database.types";
@@ -541,8 +546,11 @@ export async function executeReadOnly(
       };
     }
 
-    default:
+    default: {
+      const timerResult = await executeTimerReadOnly(command);
+      if (timerResult) return timerResult;
       throw new Error(`Intent ${(command as ParsedCommand).intent} is not read-only`);
+    }
   }
 }
 
@@ -774,8 +782,11 @@ export async function buildWritePreview(
       };
     }
 
-    default:
+    default: {
+      const timerPreview = await buildTimerWritePreview(command);
+      if (timerPreview) return timerPreview;
       throw new Error(`Intent not supported for write preview`);
+    }
   }
 }
 
@@ -1045,6 +1056,30 @@ export async function executeConfirmedAction(input: {
         assistantActionId: input.actionId,
       });
       const result = formatActionResult(message);
+      return {
+        content: result.content,
+        messageType: "action_result",
+        structuredPayload: { message: result.content },
+      };
+    }
+
+    case "start_timer":
+    case "stop_timer":
+    case "pause_timer":
+    case "resume_timer":
+    case "log_time":
+    case "use_original_estimate": {
+      const command = (payload.command ?? payload) as ParsedCommand;
+      const ok = await executeTimerWrite(command);
+      if (!ok) {
+        const err = formatError("Could not complete the timer action.");
+        return {
+          content: err.content,
+          messageType: "error",
+          structuredPayload: err.payload,
+        };
+      }
+      const result = formatActionResult("Timer action completed.");
       return {
         content: result.content,
         messageType: "action_result",

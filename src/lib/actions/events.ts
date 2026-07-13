@@ -41,6 +41,7 @@ export async function createEventAction(
   try {
     const parsed = parseEventForm(input);
     const event = await createEvent(parsed);
+    revalidatePath("/calendar");
     revalidatePath("/today");
     revalidatePath("/week");
     return { success: true, data: { id: event.id } };
@@ -56,6 +57,7 @@ export async function updateEventAction(
   try {
     const parsed = parseEventForm(input);
     await updateEvent(eventId, parsed);
+    revalidatePath("/calendar");
     revalidatePath("/today");
     revalidatePath("/week");
     revalidatePath(`/events/${eventId}/edit`);
@@ -68,6 +70,7 @@ export async function updateEventAction(
 export async function deleteEventAction(eventId: string): Promise<ActionResult> {
   try {
     await deleteEvent(eventId);
+    revalidatePath("/calendar");
     revalidatePath("/today");
     revalidatePath("/week");
     return { success: true };

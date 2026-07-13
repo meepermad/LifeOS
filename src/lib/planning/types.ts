@@ -52,6 +52,14 @@ export type PlanningTask = {
   earliestStartAt: string | null;
   estimatedMinutes: number | null;
   remainingMinutes: number | null;
+  effectiveEstimateMinutes?: number | null;
+  calibrationMeta?: {
+    factor: number;
+    sampleCount: number;
+    reason: string;
+    groupKey?: string;
+    groupLabel?: string;
+  };
   priority: number;
   difficulty: number;
   splittable: boolean;
@@ -90,6 +98,13 @@ export type ProposalExplanation = {
   scheduledTaskMinutesBeforeProposal: number;
   preferenceMatches: string[];
   preferenceViolations: string[];
+  calibration?: {
+    userEstimate: number;
+    effectiveEstimate: number;
+    factor: number;
+    sampleCount: number;
+    reason: string;
+  };
 };
 
 export type FocusBlockProposal = {

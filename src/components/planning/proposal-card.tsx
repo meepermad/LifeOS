@@ -123,6 +123,15 @@ export function ProposalCard({
               taskTitle={proposal.task_title}
             />
             <PreferenceWarnings explanation={explanation} />
+            {explanation.calibration && (
+              <p className="mt-2 text-xs text-muted">
+                Planning estimate: {explanation.calibration.effectiveEstimate}m
+                (your estimate: {explanation.calibration.userEstimate}m).
+                {explanation.calibration.sampleCount >= 5
+                  ? ` Based on ${explanation.calibration.sampleCount} similar tasks.`
+                  : " Not enough history for adaptive calibration."}
+              </p>
+            )}
           </div>
           {message && (
             <p className="mt-2 text-sm text-success">{message}</p>

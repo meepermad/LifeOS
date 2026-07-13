@@ -1,6 +1,7 @@
 import { ConflictError, DatabaseError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
+import { sumTrackedSecondsForTask } from "@/lib/data/time-entries";
 import {
   applyTaskCompletion,
   parseTaskForm,
@@ -180,15 +181,126 @@ export async function updateTask(
 export async function setTaskCompletion(
   taskId: string,
   complete: boolean,
+  options?: {
+    adjustmentSeconds?: number;
+    skipSnapshot?: boolean;
+    finalActualSeconds?: number;
+    updatedEstimateMinutes?: number | null;
+    correctionOfSnapshotId?: string;
+  },
 ): Promise<TaskRow> {
   const user = await requireAllowedUser();
   const existing = await getTaskById(taskId);
   const updates = applyTaskCompletion(existing, complete);
   const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  if (!complete) {
+    await supabase
+      .from("task_completion_snapshots")
+      .update({ is_current: false, superseded_at: now })
+      .eq("user_id", user.id)
+      .eq("task_id", taskId)
+      .eq("is_current", true);
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({
+        ...updates,
+        actual_minutes: null,
+      })
+      .eq("id", taskId)
+      .eq("user_id", user.id)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      throw new DatabaseError("Failed to reopen task");
+    }
+    return data;
+  }
+
+  let actualMinutes: number | undefined;
+  if (!options?.skipSnapshot) {
+    const trackedSeconds = await sumTrackedSecondsForTask(taskId);
+    const adjustmentSeconds = options?.adjustmentSeconds ?? 0;
+    const finalActualSeconds =
+      options?.finalActualSeconds ??
+      trackedSeconds + adjustmentSeconds;
+
+    await supabase
+      .from("task_completion_snapshots")
+      .update({ is_current: false, superseded_at: now })
+      .eq("user_id", user.id)
+      .eq("task_id", taskId)
+      .eq("is_current", true);
+
+    const { data: latest } = await supabase
+      .from("task_completion_snapshots")
+      .select("completion_sequence")
+      .eq("user_id", user.id)
+      .eq("task_id", taskId)
+      .order("completion_sequence", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextSequence = (latest?.completion_sequence ?? 0) + 1;
+    const estimateMinutes =
+      options?.updatedEstimateMinutes ?? existing.estimated_minutes;
+
+    if (
+      options?.updatedEstimateMinutes != null &&
+      options.updatedEstimateMinutes !== existing.estimated_minutes
+    ) {
+      await supabase.from("task_estimate_revisions").insert({
+        user_id: user.id,
+        task_id: taskId,
+        previous_minutes: existing.estimated_minutes,
+        new_minutes: options.updatedEstimateMinutes,
+        revision_source: "completion_review",
+      });
+    }
+
+    const { error: snapshotError } = await supabase
+      .from("task_completion_snapshots")
+      .insert({
+        user_id: user.id,
+        task_id: taskId,
+        completed_at: now,
+        original_estimate_minutes: existing.estimated_minutes,
+        current_estimate_minutes: estimateMinutes,
+        tracked_seconds: trackedSeconds,
+        adjustment_seconds: adjustmentSeconds,
+        final_actual_seconds: finalActualSeconds,
+        estimate_revision_count:
+          options?.updatedEstimateMinutes != null &&
+          options.updatedEstimateMinutes !== existing.estimated_minutes
+            ? 1
+            : 0,
+        completion_sequence: nextSequence,
+        is_current: true,
+        correction_of_snapshot_id: options?.correctionOfSnapshotId ?? null,
+      });
+
+    if (snapshotError) {
+      throw new DatabaseError("Failed to save completion snapshot");
+    }
+
+    if (finalActualSeconds > 0) {
+      actualMinutes = Math.round(finalActualSeconds / 60);
+    }
+  }
 
   const { data, error } = await supabase
     .from("tasks")
-    .update(updates)
+    .update({
+      ...updates,
+      ...(options?.updatedEstimateMinutes != null
+        ? { estimated_minutes: options.updatedEstimateMinutes }
+        : {}),
+      ...(actualMinutes != null ? { actual_minutes: actualMinutes } : {}),
+      ...(options?.skipSnapshot ? { actual_minutes: null } : {}),
+    })
     .eq("id", taskId)
     .eq("user_id", user.id)
     .select("*")
@@ -199,6 +311,80 @@ export async function setTaskCompletion(
   }
 
   return data;
+}
+
+export async function correctCompletionSnapshot(input: {
+  taskId: string;
+  finalActualSeconds: number;
+  adjustmentSeconds?: number;
+  updatedEstimateMinutes?: number | null;
+}): Promise<TaskRow> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+
+  const { data: current, error } = await supabase
+    .from("task_completion_snapshots")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("task_id", input.taskId)
+    .eq("is_current", true)
+    .maybeSingle();
+
+  if (error || !current) {
+    throw new DatabaseError("No current completion snapshot to correct");
+  }
+
+  const trackedSeconds = await sumTrackedSecondsForTask(input.taskId);
+  const now = new Date().toISOString();
+
+  await supabase
+    .from("task_completion_snapshots")
+    .update({ is_current: false, superseded_at: now })
+    .eq("id", current.id)
+    .eq("user_id", user.id);
+
+  const nextSequence = current.completion_sequence + 1;
+  const adjustmentSeconds = input.adjustmentSeconds ?? 0;
+
+  await supabase.from("task_completion_snapshots").insert({
+    user_id: user.id,
+    task_id: input.taskId,
+    completed_at: current.completed_at,
+    original_estimate_minutes: current.original_estimate_minutes,
+    current_estimate_minutes:
+      input.updatedEstimateMinutes ?? current.current_estimate_minutes,
+    tracked_seconds: trackedSeconds,
+    adjustment_seconds: adjustmentSeconds,
+    final_actual_seconds: input.finalActualSeconds,
+    estimate_revision_count: current.estimate_revision_count,
+    completion_sequence: nextSequence,
+    is_current: true,
+    correction_of_snapshot_id: current.id,
+  });
+
+  const actualMinutes =
+    input.finalActualSeconds > 0
+      ? Math.round(input.finalActualSeconds / 60)
+      : null;
+
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .update({
+      actual_minutes: actualMinutes,
+      ...(input.updatedEstimateMinutes != null
+        ? { estimated_minutes: input.updatedEstimateMinutes }
+        : {}),
+    })
+    .eq("id", input.taskId)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (taskError || !task) {
+    throw new DatabaseError("Failed to update task after correction");
+  }
+
+  return task;
 }
 
 export async function deleteTask(taskId: string): Promise<void> {

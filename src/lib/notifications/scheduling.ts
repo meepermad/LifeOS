@@ -10,6 +10,7 @@ import {
   buildDailyAgendaPayload,
   buildDeadlineWarningPayload,
   buildOverloadWarningPayload,
+  buildStaleTimerPayload,
   buildWeeklySummaryPayload,
 } from "@/lib/notifications/payloads";
 import { sendNotificationToUser } from "@/lib/notifications/sender";
@@ -49,6 +50,13 @@ export function buildOverloadDedupKey(
   dateKey: string,
 ): string {
   return `overload_warning:${userId}:${periodType}:${dateKey}`;
+}
+
+export function buildStaleTimerDedupKey(
+  userId: string,
+  entryId: string,
+): string {
+  return `stale_timer:${userId}:${entryId}`;
 }
 
 export function buildTestDedupKey(userId: string, minuteBucket: string): string {
@@ -129,6 +137,7 @@ export type ProcessResult = {
   weekly: number;
   deadline: number;
   overload: number;
+  staleTimer: number;
   skipped: number;
   errors: number;
 };
@@ -145,6 +154,7 @@ export async function processScheduledNotifications(
     weekly: 0,
     deadline: 0,
     overload: 0,
+    staleTimer: 0,
     skipped: 0,
     errors: 0,
   };
@@ -338,6 +348,54 @@ export async function processScheduledNotifications(
         if (sendResult.successCount > 0) result.overload += 1;
         else if (sendResult.subscriptionCount === 0) result.skipped += 1;
         else result.errors += 1;
+      }
+    }
+  }
+
+  const thresholdHours = preferences.stale_timer_threshold_hours ?? 4;
+  const { data: activeTimer } = await client
+    .from("task_time_entries")
+    .select("id, started_at, task_title_snapshot")
+    .eq("user_id", userId)
+    .is("ended_at", null)
+    .eq("entry_source", "timer")
+    .maybeSingle();
+
+  if (
+    activeTimer &&
+    !preferences.stale_timer_notified_at &&
+    (now.getTime() - new Date(activeTimer.started_at).getTime()) /
+      (1000 * 60 * 60) >=
+      thresholdHours
+  ) {
+    const dedupKey = buildStaleTimerDedupKey(userId, activeTimer.id);
+    const existing = await findDeliveryByKey(client, dedupKey);
+
+    if (!existing || !isDeliveryComplete(existing.status)) {
+      const payload = buildStaleTimerPayload(
+        activeTimer.task_title_snapshot,
+        thresholdHours,
+        privacyMode,
+      );
+      const sendResult = await sendNotificationToUser(client, {
+        userId,
+        notificationType: "stale_timer",
+        payload,
+        deduplicationKey: dedupKey,
+        scheduledFor,
+        payloadSummary: { thresholdHours },
+      });
+
+      if (sendResult.successCount > 0) {
+        result.staleTimer += 1;
+        await client
+          .from("planning_preferences")
+          .update({ stale_timer_notified_at: now.toISOString() })
+          .eq("user_id", userId);
+      } else if (sendResult.subscriptionCount === 0) {
+        result.skipped += 1;
+      } else {
+        result.errors += 1;
       }
     }
   }

@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import {
+  correctCompletionSnapshot,
   createTask,
   deleteTask,
   setTaskCompletion,
   updateTask,
 } from "@/lib/data/tasks";
+import { buildCompletionReviewPayload } from "@/lib/analytics/time-authority";
+import { stopTimer } from "@/lib/data/time-entries";
 import { parseTaskForm, type TaskFormInput } from "@/lib/validation/tasks";
 import { AppError } from "@/lib/errors/app-error";
 
@@ -74,6 +77,62 @@ export async function completeTaskAction(taskId: string): Promise<ActionResult> 
     revalidatePath("/today");
     revalidatePath("/week");
     revalidatePath("/tasks");
+    revalidatePath("/insights");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function getCompletionReviewAction(taskId: string) {
+  try {
+    const data = await buildCompletionReviewPayload(taskId);
+    return { success: true as const, data };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function completeTaskWithReviewAction(input: {
+  taskId: string;
+  skipSnapshot?: boolean;
+  finalActualSeconds?: number;
+  adjustmentSeconds?: number;
+  stopTimerFirst?: boolean;
+  updatedEstimateMinutes?: number | null;
+}): Promise<ActionResult> {
+  try {
+    if (input.stopTimerFirst) {
+      await stopTimer();
+    }
+    await setTaskCompletion(input.taskId, true, {
+      skipSnapshot: input.skipSnapshot,
+      finalActualSeconds: input.finalActualSeconds,
+      adjustmentSeconds: input.adjustmentSeconds,
+      updatedEstimateMinutes: input.updatedEstimateMinutes,
+    });
+    revalidatePath("/today");
+    revalidatePath("/week");
+    revalidatePath("/tasks");
+    revalidatePath("/insights");
+    revalidatePath("/calendar");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function correctCompletionSnapshotAction(input: {
+  taskId: string;
+  finalActualSeconds: number;
+  adjustmentSeconds?: number;
+  updatedEstimateMinutes?: number | null;
+}): Promise<ActionResult> {
+  try {
+    await correctCompletionSnapshot(input);
+    revalidatePath("/today");
+    revalidatePath("/tasks");
+    revalidatePath("/insights");
     return { success: true };
   } catch (error) {
     return toActionError(error);

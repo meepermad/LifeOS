@@ -137,6 +137,29 @@ export function buildOverloadWarningPayload(
   };
 }
 
+export function buildStaleTimerPayload(
+  taskTitle: string | null,
+  thresholdHours: number,
+  privacyMode: NotificationPrivacyMode,
+): NotificationPayload {
+  if (privacyMode === "private") {
+    return {
+      title: "LifeOS timer",
+      body: `A task timer has been running for more than ${thresholdHours} hours.`,
+      tag: "lifeos-stale-timer",
+      url: "/today?timer=stale",
+    };
+  }
+
+  const title = taskTitle ?? "A task";
+  return {
+    title: "LifeOS timer",
+    body: `Your timer for "${title}" has been running for more than ${thresholdHours} hours.`,
+    tag: "lifeos-stale-timer",
+    url: "/today?timer=stale",
+  };
+}
+
 export function buildFallbackPayload(): NotificationPayload {
   return {
     title: "LifeOS",

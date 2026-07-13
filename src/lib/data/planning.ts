@@ -15,6 +15,10 @@ import {
 } from "@/lib/dates/timezone";
 import { buildProposalInputs } from "@/lib/planning/mappers";
 import { toPlanningEvent } from "@/lib/planning/mappers";
+import {
+  applyCalibrationToPlanningTasks,
+  loadCalibrationContext,
+} from "@/lib/analytics/planning-calibration";
 import { getAcademicBlockingEvents } from "@/lib/academic/planning-blocks";
 import { generatePlanningProposals } from "@/lib/planning/proposal-generator";
 import { computePlanningInputHash } from "@/lib/planning/proposal-hash";
@@ -130,21 +134,33 @@ export async function loadPlanningInputs(
         endAt: p.proposed_end_at,
       })) ?? [];
 
+  const calibrationContext = await loadCalibrationContext(
+    preferences.calibration_reset_at,
+  );
+  const calibratedTasks = applyCalibrationToPlanningTasks(
+    tasks,
+    preferences,
+    calibrationContext,
+  );
+
+  const base = buildProposalInputs({
+    events,
+    tasks,
+    availabilityRules,
+    preferences,
+    weekStartsOn: period.weekStartsOn,
+    now,
+    periodType: request.periodType,
+    periodStart: period.periodStart,
+    periodEnd: period.periodEnd,
+    dayKeys: period.dayKeys,
+    pendingProposalIntervals,
+    acceptedProposalIntervals,
+  });
+
   return {
-    ...buildProposalInputs({
-      events,
-      tasks,
-      availabilityRules,
-      preferences,
-      weekStartsOn: period.weekStartsOn,
-      now,
-      periodType: request.periodType,
-      periodStart: period.periodStart,
-      periodEnd: period.periodEnd,
-      dayKeys: period.dayKeys,
-      pendingProposalIntervals,
-      acceptedProposalIntervals,
-    }),
+    ...base,
+    tasks: calibratedTasks,
     events: [
       ...events.map(toPlanningEvent),
       ...academicBlocks,

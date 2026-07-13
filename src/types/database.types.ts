@@ -14,143 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      assistant_actions: {
-        Row: {
-          action_type: string
-          clarification_state: Json | null
-          confirmed_at: string | null
-          created_at: string
-          executed_at: string | null
-          executed_payload: Json | null
-          expires_at: string | null
-          id: string
-          idempotency_key: string
-          proposed_payload: Json
-          rejected_at: string | null
-          source_message_id: string | null
-          status: string
-          thread_id: string
-          user_id: string
-        }
-        Insert: {
-          action_type: string
-          clarification_state?: Json | null
-          confirmed_at?: string | null
-          created_at?: string
-          executed_at?: string | null
-          executed_payload?: Json | null
-          expires_at?: string | null
-          id?: string
-          idempotency_key: string
-          proposed_payload: Json
-          rejected_at?: string | null
-          source_message_id?: string | null
-          status: string
-          thread_id: string
-          user_id: string
-        }
-        Update: {
-          action_type?: string
-          clarification_state?: Json | null
-          confirmed_at?: string | null
-          created_at?: string
-          executed_at?: string | null
-          executed_payload?: Json | null
-          expires_at?: string | null
-          id?: string
-          idempotency_key?: string
-          proposed_payload?: Json
-          rejected_at?: string | null
-          source_message_id?: string | null
-          status?: string
-          thread_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "assistant_actions_source_message_id_fkey"
-            columns: ["source_message_id"]
-            isOneToOne: false
-            referencedRelation: "assistant_messages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "assistant_actions_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "assistant_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      assistant_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          message_type: string
-          role: string
-          structured_payload: Json | null
-          thread_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          message_type?: string
-          role: string
-          structured_payload?: Json | null
-          thread_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          message_type?: string
-          role?: string
-          structured_payload?: Json | null
-          thread_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "assistant_messages_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "assistant_threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      assistant_threads: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          title?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       academic_exceptions: {
         Row: {
           academic_term_id: string
@@ -367,6 +230,116 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_actions: {
+        Row: {
+          action_type: string
+          clarification_state: Json | null
+          confirmed_at: string | null
+          created_at: string
+          executed_at: string | null
+          executed_payload: Json | null
+          expires_at: string | null
+          id: string
+          idempotency_key: string
+          proposed_payload: Json
+          rejected_at: string | null
+          source_message_id: string | null
+          status: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          clarification_state?: Json | null
+          confirmed_at?: string | null
+          created_at?: string
+          executed_at?: string | null
+          executed_payload?: Json | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key: string
+          proposed_payload: Json
+          rejected_at?: string | null
+          source_message_id?: string | null
+          status: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          clarification_state?: Json | null
+          confirmed_at?: string | null
+          created_at?: string
+          executed_at?: string | null
+          executed_payload?: Json | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key?: string
+          proposed_payload?: Json
+          rejected_at?: string | null
+          source_message_id?: string | null
+          status?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_actions_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_actions_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_type: string
+          role: string
+          structured_payload: Json | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          role: string
+          structured_payload?: Json | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          role?: string
+          structured_payload?: Json | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assistant_parser_outcomes: {
         Row: {
           clarification_reason: string | null
@@ -403,89 +376,29 @@ export type Database = {
         }
         Relationships: []
       }
-      canvas_class_link_decisions: {
+      assistant_threads: {
         Row: {
-          academic_term_id: string
-          candidate_fingerprint: string
-          canvas_course_id: string | null
-          class_meeting_id: string | null
           created_at: string
           id: string
-          resolution_mode: string
-          reversed_at: string | null
+          is_active: boolean
+          title: string
+          updated_at: string
           user_id: string
         }
         Insert: {
-          academic_term_id: string
-          candidate_fingerprint: string
-          canvas_course_id?: string | null
-          class_meeting_id?: string | null
           created_at?: string
           id?: string
-          resolution_mode: string
-          reversed_at?: string | null
+          is_active?: boolean
+          title?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
-          academic_term_id?: string
-          candidate_fingerprint?: string
-          canvas_course_id?: string | null
-          class_meeting_id?: string | null
           created_at?: string
           id?: string
-          resolution_mode?: string
-          reversed_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      canvas_class_link_uids: {
-        Row: {
-          canvas_external_event_id: string
-          created_at: string
-          decision_id: string
-          id: string
-        }
-        Insert: {
-          canvas_external_event_id: string
-          created_at?: string
-          decision_id: string
-          id?: string
-        }
-        Update: {
-          canvas_external_event_id?: string
-          created_at?: string
-          decision_id?: string
-          id?: string
-        }
-        Relationships: []
-      }
-      canvas_suppressed_occurrences: {
-        Row: {
-          canvas_external_event_id: string
-          class_meeting_id: string
-          decision_id: string
-          id: string
-          reversed_at: string | null
-          suppressed_at: string
-          user_id: string
-        }
-        Insert: {
-          canvas_external_event_id: string
-          class_meeting_id: string
-          decision_id: string
-          id?: string
-          reversed_at?: string | null
-          suppressed_at?: string
-          user_id: string
-        }
-        Update: {
-          canvas_external_event_id?: string
-          class_meeting_id?: string
-          decision_id?: string
-          id?: string
-          reversed_at?: string | null
-          suppressed_at?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -579,62 +492,130 @@ export type Database = {
           },
         ]
       }
-      connections: {
+      canvas_class_link_decisions: {
         Row: {
+          academic_term_id: string
+          candidate_fingerprint: string
+          canvas_course_id: string | null
+          class_meeting_id: string | null
           created_at: string
-          credentials_version: number
-          display_name: string | null
-          encrypted_credentials: string | null
-          external_home_account_id: string | null
-          external_tenant_id: string | null
           id: string
-          last_error: string | null
-          last_successful_sync: string | null
-          last_sync_attempt: string | null
-          last_sync_trigger: string | null
-          provider: string
-          requires_reauthentication: boolean
-          status: string
-          updated_at: string
+          resolution_mode: string
+          reversed_at: string | null
           user_id: string
         }
         Insert: {
+          academic_term_id: string
+          candidate_fingerprint: string
+          canvas_course_id?: string | null
+          class_meeting_id?: string | null
           created_at?: string
-          credentials_version?: number
-          display_name?: string | null
-          encrypted_credentials?: string | null
-          external_home_account_id?: string | null
-          external_tenant_id?: string | null
           id?: string
-          last_error?: string | null
-          last_successful_sync?: string | null
-          last_sync_attempt?: string | null
-          last_sync_trigger?: string | null
-          provider: string
-          requires_reauthentication?: boolean
-          status?: string
-          updated_at?: string
+          resolution_mode: string
+          reversed_at?: string | null
           user_id: string
         }
         Update: {
+          academic_term_id?: string
+          candidate_fingerprint?: string
+          canvas_course_id?: string | null
+          class_meeting_id?: string | null
           created_at?: string
-          credentials_version?: number
-          display_name?: string | null
-          encrypted_credentials?: string | null
-          external_home_account_id?: string | null
-          external_tenant_id?: string | null
           id?: string
-          last_error?: string | null
-          last_successful_sync?: string | null
-          last_sync_attempt?: string | null
-          last_sync_trigger?: string | null
-          provider?: string
-          requires_reauthentication?: boolean
-          status?: string
-          updated_at?: string
+          resolution_mode?: string
+          reversed_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "canvas_class_link_decisions_academic_term_id_fkey"
+            columns: ["academic_term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_class_link_decisions_class_meeting_id_fkey"
+            columns: ["class_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "class_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_class_link_uids: {
+        Row: {
+          canvas_external_event_id: string
+          created_at: string
+          decision_id: string
+          id: string
+        }
+        Insert: {
+          canvas_external_event_id: string
+          created_at?: string
+          decision_id: string
+          id?: string
+        }
+        Update: {
+          canvas_external_event_id?: string
+          created_at?: string
+          decision_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_class_link_uids_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_class_link_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_suppressed_occurrences: {
+        Row: {
+          canvas_external_event_id: string
+          class_meeting_id: string
+          decision_id: string
+          id: string
+          reversed_at: string | null
+          suppressed_at: string
+          user_id: string
+        }
+        Insert: {
+          canvas_external_event_id: string
+          class_meeting_id: string
+          decision_id: string
+          id?: string
+          reversed_at?: string | null
+          suppressed_at?: string
+          user_id: string
+        }
+        Update: {
+          canvas_external_event_id?: string
+          class_meeting_id?: string
+          decision_id?: string
+          id?: string
+          reversed_at?: string | null
+          suppressed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_suppressed_occurrences_class_meeting_id_fkey"
+            columns: ["class_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "class_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_suppressed_occurrences_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_class_link_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       class_meetings: {
         Row: {
@@ -698,9 +679,67 @@ export type Database = {
           },
         ]
       }
+      connections: {
+        Row: {
+          created_at: string
+          credentials_version: number
+          display_name: string | null
+          encrypted_credentials: string | null
+          external_home_account_id: string | null
+          external_tenant_id: string | null
+          id: string
+          last_error: string | null
+          last_successful_sync: string | null
+          last_sync_attempt: string | null
+          last_sync_trigger: string | null
+          provider: string
+          requires_reauthentication: boolean
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credentials_version?: number
+          display_name?: string | null
+          encrypted_credentials?: string | null
+          external_home_account_id?: string | null
+          external_tenant_id?: string | null
+          id?: string
+          last_error?: string | null
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_trigger?: string | null
+          provider: string
+          requires_reauthentication?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credentials_version?: number
+          display_name?: string | null
+          encrypted_credentials?: string | null
+          external_home_account_id?: string | null
+          external_tenant_id?: string | null
+          id?: string
+          last_error?: string | null
+          last_successful_sync?: string | null
+          last_sync_attempt?: string | null
+          last_sync_trigger?: string | null
+          provider?: string
+          requires_reauthentication?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           academic_term_id: string
+          canvas_course_id: string | null
           code: string
           color: string | null
           created_at: string
@@ -712,6 +751,7 @@ export type Database = {
         }
         Insert: {
           academic_term_id: string
+          canvas_course_id?: string | null
           code?: string
           color?: string | null
           created_at?: string
@@ -723,6 +763,7 @@ export type Database = {
         }
         Update: {
           academic_term_id?: string
+          canvas_course_id?: string | null
           code?: string
           color?: string | null
           created_at?: string
@@ -765,9 +806,9 @@ export type Database = {
           organizer_name: string | null
           related_task_id: string | null
           sensitivity: string | null
-          show_as: string | null
           shift_note: string | null
           shift_source_label: string | null
+          show_as: string | null
           source: string
           start_at: string
           status: string
@@ -798,9 +839,9 @@ export type Database = {
           organizer_name?: string | null
           related_task_id?: string | null
           sensitivity?: string | null
-          show_as?: string | null
           shift_note?: string | null
           shift_source_label?: string | null
+          show_as?: string | null
           source?: string
           start_at: string
           status?: string
@@ -831,9 +872,9 @@ export type Database = {
           organizer_name?: string | null
           related_task_id?: string | null
           sensitivity?: string | null
-          show_as?: string | null
           shift_note?: string | null
           shift_source_label?: string | null
+          show_as?: string | null
           source?: string
           start_at?: string
           status?: string
@@ -930,10 +971,65 @@ export type Database = {
         }
         Relationships: []
       }
+      planning_block_feedback: {
+        Row: {
+          created_at: string
+          event_id: string
+          feedback: string
+          id: string
+          note: string | null
+          partial_minutes: number | null
+          proposal_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          feedback: string
+          id?: string
+          note?: string | null
+          partial_minutes?: number | null
+          proposal_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          feedback?: string
+          id?: string
+          note?: string | null
+          partial_minutes?: number | null
+          proposal_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_block_feedback_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_block_feedback_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "planning_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_preferences: {
         Row: {
+          adaptive_planning_enabled: boolean
           auto_create_focus_blocks: boolean
           avoid_difficult_work_after: string | null
+          calendar_desktop_view: string
+          calendar_filter_prefs: Json
+          calendar_mobile_view: string
+          calendar_visible_end_hour: number
+          calendar_visible_start_hour: number
+          calibration_reset_at: string | null
           created_at: string
           daily_notification_time: string | null
           daily_notifications_enabled: boolean
@@ -948,6 +1044,8 @@ export type Database = {
           preferred_focus_block_minutes: number
           quiet_hours_end: string | null
           quiet_hours_start: string | null
+          stale_timer_notified_at: string | null
+          stale_timer_threshold_hours: number
           travel_buffer_minutes: number
           updated_at: string
           user_id: string
@@ -956,8 +1054,15 @@ export type Database = {
           weekly_notifications_enabled: boolean
         }
         Insert: {
+          adaptive_planning_enabled?: boolean
           auto_create_focus_blocks?: boolean
           avoid_difficult_work_after?: string | null
+          calendar_desktop_view?: string
+          calendar_filter_prefs?: Json
+          calendar_mobile_view?: string
+          calendar_visible_end_hour?: number
+          calendar_visible_start_hour?: number
+          calibration_reset_at?: string | null
           created_at?: string
           daily_notification_time?: string | null
           daily_notifications_enabled?: boolean
@@ -972,6 +1077,8 @@ export type Database = {
           preferred_focus_block_minutes?: number
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          stale_timer_notified_at?: string | null
+          stale_timer_threshold_hours?: number
           travel_buffer_minutes?: number
           updated_at?: string
           user_id: string
@@ -980,8 +1087,15 @@ export type Database = {
           weekly_notifications_enabled?: boolean
         }
         Update: {
+          adaptive_planning_enabled?: boolean
           auto_create_focus_blocks?: boolean
           avoid_difficult_work_after?: string | null
+          calendar_desktop_view?: string
+          calendar_filter_prefs?: Json
+          calendar_mobile_view?: string
+          calendar_visible_end_hour?: number
+          calendar_visible_start_hour?: number
+          calibration_reset_at?: string | null
           created_at?: string
           daily_notification_time?: string | null
           daily_notifications_enabled?: boolean
@@ -996,6 +1110,8 @@ export type Database = {
           preferred_focus_block_minutes?: number
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          stale_timer_notified_at?: string | null
+          stale_timer_threshold_hours?: number
           travel_buffer_minutes?: number
           updated_at?: string
           user_id?: string
@@ -1195,6 +1311,86 @@ export type Database = {
         }
         Relationships: []
       }
+      shortcut_command_dedup: {
+        Row: {
+          client_request_id: string
+          created_at: string
+          device_id: string
+          id: string
+          response_json: Json
+        }
+        Insert: {
+          client_request_id: string
+          created_at?: string
+          device_id: string
+          id?: string
+          response_json: Json
+        }
+        Update: {
+          client_request_id?: string
+          created_at?: string
+          device_id?: string
+          id?: string
+          response_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortcut_command_dedup_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "shortcut_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shortcut_devices: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error_code: string | null
+          last_success_at: string | null
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          spoken_detail_level: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          spoken_detail_level?: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          spoken_detail_level?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sync_states: {
         Row: {
           calendar_id: string | null
@@ -1245,7 +1441,7 @@ export type Database = {
           {
             foreignKeyName: "sync_states_calendar_id_fkey"
             columns: ["calendar_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "calendars"
             referencedColumns: ["id"]
           },
@@ -1258,11 +1454,191 @@ export type Database = {
           },
         ]
       }
+      task_completion_snapshots: {
+        Row: {
+          adjustment_seconds: number
+          completed_at: string
+          completion_sequence: number
+          correction_of_snapshot_id: string | null
+          created_at: string
+          current_estimate_minutes: number | null
+          estimate_revision_count: number
+          final_actual_seconds: number
+          id: string
+          is_current: boolean
+          original_estimate_minutes: number | null
+          superseded_at: string | null
+          task_id: string
+          tracked_seconds: number
+          user_id: string
+        }
+        Insert: {
+          adjustment_seconds?: number
+          completed_at: string
+          completion_sequence?: number
+          correction_of_snapshot_id?: string | null
+          created_at?: string
+          current_estimate_minutes?: number | null
+          estimate_revision_count?: number
+          final_actual_seconds?: number
+          id?: string
+          is_current?: boolean
+          original_estimate_minutes?: number | null
+          superseded_at?: string | null
+          task_id: string
+          tracked_seconds?: number
+          user_id: string
+        }
+        Update: {
+          adjustment_seconds?: number
+          completed_at?: string
+          completion_sequence?: number
+          correction_of_snapshot_id?: string | null
+          created_at?: string
+          current_estimate_minutes?: number | null
+          estimate_revision_count?: number
+          final_actual_seconds?: number
+          id?: string
+          is_current?: boolean
+          original_estimate_minutes?: number | null
+          superseded_at?: string | null
+          task_id?: string
+          tracked_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completion_snapshots_correction_of_snapshot_id_fkey"
+            columns: ["correction_of_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "task_completion_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_completion_snapshots_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_estimate_revisions: {
+        Row: {
+          created_at: string
+          id: string
+          new_minutes: number | null
+          previous_minutes: number | null
+          reason: string | null
+          revision_source: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_minutes?: number | null
+          previous_minutes?: number | null
+          reason?: string | null
+          revision_source: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_minutes?: number | null
+          previous_minutes?: number | null
+          reason?: string | null
+          revision_source?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_estimate_revisions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_time_entries: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          entry_source: string
+          id: string
+          note: string | null
+          parent_entry_id: string | null
+          review_reason: string | null
+          review_state: string
+          reviewed_at: string | null
+          started_at: string
+          task_id: string | null
+          task_title_snapshot: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          entry_source?: string
+          id?: string
+          note?: string | null
+          parent_entry_id?: string | null
+          review_reason?: string | null
+          review_state?: string
+          reviewed_at?: string | null
+          started_at: string
+          task_id?: string | null
+          task_title_snapshot?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          entry_source?: string
+          id?: string
+          note?: string | null
+          parent_entry_id?: string | null
+          review_reason?: string | null
+          review_state?: string
+          reviewed_at?: string | null
+          started_at?: string
+          task_id?: string | null
+          task_title_snapshot?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_time_entries_parent_entry_id_fkey"
+            columns: ["parent_entry_id"]
+            isOneToOne: false
+            referencedRelation: "task_time_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           actual_minutes: number | null
           cancelled_by_sync: boolean
           completed_at: string | null
+          course_id: string | null
           created_at: string
           description: string | null
           difficulty: number
@@ -1272,6 +1648,7 @@ export type Database = {
           external_task_id: string | null
           id: string
           minimum_block_minutes: number
+          planning_estimate_override: string | null
           priority: number
           related_event_id: string | null
           remaining_minutes: number | null
@@ -1288,6 +1665,7 @@ export type Database = {
           actual_minutes?: number | null
           cancelled_by_sync?: boolean
           completed_at?: string | null
+          course_id?: string | null
           created_at?: string
           description?: string | null
           difficulty?: number
@@ -1297,6 +1675,7 @@ export type Database = {
           external_task_id?: string | null
           id?: string
           minimum_block_minutes?: number
+          planning_estimate_override?: string | null
           priority?: number
           related_event_id?: string | null
           remaining_minutes?: number | null
@@ -1313,6 +1692,7 @@ export type Database = {
           actual_minutes?: number | null
           cancelled_by_sync?: boolean
           completed_at?: string | null
+          course_id?: string | null
           created_at?: string
           description?: string | null
           difficulty?: number
@@ -1322,6 +1702,7 @@ export type Database = {
           external_task_id?: string | null
           id?: string
           minimum_block_minutes?: number
+          planning_estimate_override?: string | null
           priority?: number
           related_event_id?: string | null
           remaining_minutes?: number | null
@@ -1336,10 +1717,52 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "tasks_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_related_event_id_fkey"
             columns: ["related_event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timer_pause_segments: {
+        Row: {
+          created_at: string
+          entry_id: string
+          id: string
+          paused_at: string
+          resumed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          id?: string
+          paused_at: string
+          resumed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          id?: string
+          paused_at?: string
+          resumed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timer_pause_segments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "task_time_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -1382,86 +1805,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      shortcut_devices: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          last_error_code: string | null
-          last_success_at: string | null
-          last_used_at: string | null
-          name: string
-          revoked_at: string | null
-          spoken_detail_level: string
-          token_hash: string
-          token_prefix: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          last_error_code?: string | null
-          last_success_at?: string | null
-          last_used_at?: string | null
-          name: string
-          revoked_at?: string | null
-          spoken_detail_level?: string
-          token_hash: string
-          token_prefix: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          last_error_code?: string | null
-          last_success_at?: string | null
-          last_used_at?: string | null
-          name?: string
-          revoked_at?: string | null
-          spoken_detail_level?: string
-          token_hash?: string
-          token_prefix?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      shortcut_command_dedup: {
-        Row: {
-          client_request_id: string
-          created_at: string
-          device_id: string
-          id: string
-          response_json: Json
-        }
-        Insert: {
-          client_request_id: string
-          created_at?: string
-          device_id: string
-          id?: string
-          response_json: Json
-        }
-        Update: {
-          client_request_id?: string
-          created_at?: string
-          device_id?: string
-          id?: string
-          response_json?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shortcut_command_dedup_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "shortcut_devices"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       workload_snapshots: {
         Row: {
@@ -1551,11 +1894,35 @@ export type Database = {
         Args: { p_connection_id: string; p_stale_minutes?: number }
         Returns: string
       }
+      create_assistant_action: {
+        Args: {
+          p_action_type: string
+          p_clarification_state?: Json
+          p_expires_at?: string
+          p_proposed_payload: Json
+          p_source_message_id?: string
+          p_status: string
+          p_thread_id: string
+        }
+        Returns: Json
+      }
       deactivate_push_subscription: {
         Args: { p_subscription_id: string }
         Returns: boolean
       }
       deactivate_push_subscription_by_endpoint: {
+        Args: { p_endpoint: string }
+        Returns: boolean
+      }
+      execute_assistant_action: {
+        Args: { p_action_id: string; p_executed_payload: Json }
+        Returns: Json
+      }
+      expire_stale_assistant_actions: {
+        Args: { p_thread_id: string }
+        Returns: number
+      }
+      is_push_endpoint_registered: {
         Args: { p_endpoint: string }
         Returns: boolean
       }
@@ -1569,6 +1936,27 @@ export type Database = {
           last_failed_push: string
           last_successful_push: string
         }[]
+      }
+      list_shortcut_devices: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error_code: string
+          last_success_at: string
+          last_used_at: string
+          name: string
+          revoked_at: string
+          spoken_detail_level: string
+          token_prefix: string
+        }[]
+      }
+      purge_expired_ai_intent_router_telemetry: { Args: never; Returns: number }
+      purge_expired_parser_outcomes: { Args: never; Returns: number }
+      record_shortcut_device_usage: {
+        Args: { p_device_id: string; p_error_code?: string; p_success: boolean }
+        Returns: undefined
       }
       register_push_subscription: {
         Args: {
@@ -1588,16 +1976,12 @@ export type Database = {
           last_successful_push: string
         }[]
       }
-      is_push_endpoint_registered: {
-        Args: { p_endpoint: string }
-        Returns: boolean
-      }
       register_shortcut_device: {
         Args: {
           p_name: string
+          p_spoken_detail_level?: string
           p_token_hash: string
           p_token_prefix: string
-          p_spoken_detail_level?: string
         }
         Returns: {
           created_at: string
@@ -1608,20 +1992,18 @@ export type Database = {
           token_prefix: string
         }[]
       }
-      list_shortcut_devices: {
-        Args: never
-        Returns: {
-          created_at: string
-          id: string
-          is_active: boolean
-          last_error_code: string | null
-          last_success_at: string | null
-          last_used_at: string | null
-          name: string
-          revoked_at: string | null
-          spoken_detail_level: string
-          token_prefix: string
-        }[]
+      reject_assistant_action: { Args: { p_action_id: string }; Returns: Json }
+      reject_pending_assistant_actions: {
+        Args: { p_thread_id: string }
+        Returns: number
+      }
+      reject_planning_proposal: {
+        Args: { p_proposal_id: string }
+        Returns: Json
+      }
+      revoke_shortcut_device: {
+        Args: { p_device_id: string }
+        Returns: boolean
       }
       rotate_shortcut_device_token: {
         Args: {
@@ -1638,9 +2020,13 @@ export type Database = {
           token_prefix: string
         }[]
       }
-      revoke_shortcut_device: {
-        Args: { p_device_id: string }
-        Returns: boolean
+      store_shortcut_command_dedup: {
+        Args: {
+          p_client_request_id: string
+          p_device_id: string
+          p_response_json: Json
+        }
+        Returns: Json
       }
       update_shortcut_device: {
         Args: {
@@ -1649,57 +2035,6 @@ export type Database = {
           p_spoken_detail_level: string
         }
         Returns: boolean
-      }
-      record_shortcut_device_usage: {
-        Args: {
-          p_device_id: string
-          p_success: boolean
-          p_error_code?: string
-        }
-        Returns: undefined
-      }
-      store_shortcut_command_dedup: {
-        Args: {
-          p_device_id: string
-          p_client_request_id: string
-          p_response_json: Json
-        }
-        Returns: Json
-      }
-      reject_planning_proposal: {
-        Args: { p_proposal_id: string }
-        Returns: Json
-      }
-      create_assistant_action: {
-        Args: {
-          p_thread_id: string
-          p_action_type: string
-          p_status: string
-          p_proposed_payload: Json
-          p_source_message_id?: string
-          p_clarification_state?: Json
-          p_expires_at?: string
-        }
-        Returns: Json
-      }
-      reject_assistant_action: {
-        Args: { p_action_id: string }
-        Returns: Json
-      }
-      reject_pending_assistant_actions: {
-        Args: { p_thread_id: string }
-        Returns: number
-      }
-      expire_stale_assistant_actions: {
-        Args: { p_thread_id: string }
-        Returns: number
-      }
-      execute_assistant_action: {
-        Args: {
-          p_action_id: string
-          p_executed_payload: Json
-        }
-        Returns: Json
       }
     }
     Enums: {

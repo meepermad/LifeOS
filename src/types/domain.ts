@@ -6,7 +6,13 @@ export type SyncStateRow = Database["public"]["Tables"]["sync_states"]["Row"];
 export type CalendarRow = Database["public"]["Tables"]["calendars"]["Row"];
 export type EventRow = Database["public"]["Tables"]["events"]["Row"];
 export type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
-export type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
+export type TaskRow = Omit<
+  Database["public"]["Tables"]["tasks"]["Row"],
+  "planning_estimate_override" | "course_id"
+> & {
+  planning_estimate_override?: string | null;
+  course_id?: string | null;
+};
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type AvailabilityRuleRow =
   Database["public"]["Tables"]["availability_rules"]["Row"];
@@ -75,7 +81,8 @@ export type NotificationType =
   | "daily_agenda"
   | "weekly_summary"
   | "deadline_warning"
-  | "overload_warning";
+  | "overload_warning"
+  | "stale_timer";
 
 export type NotificationDeliveryStatus =
   | "pending"

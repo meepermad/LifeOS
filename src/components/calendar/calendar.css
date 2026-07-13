@@ -1,0 +1,42 @@
+.lifeos-calendar .fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--surface-elevated);
+  --fc-list-event-hover-bg-color: var(--surface-elevated);
+  --fc-today-bg-color: rgba(59, 130, 246, 0.08);
+}
+
+.lifeos-calendar .fc-event {
+  border-width: 2px;
+  font-size: 0.75rem;
+  min-height: 1.25rem;
+}
+
+.lifeos-calendar .fc-event.lifeos-deadline-marker {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.lifeos-calendar .fc-timegrid-event .fc-event-main {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lifeos-calendar .fc-col-header-cell-cushion,
+.lifeos-calendar .fc-timegrid-slot-label-cushion {
+  font-size: 0.7rem;
+}
+
+.lifeos-calendar .fc-timegrid-now-indicator-line {
+  border-color: #ef4444;
+}
+
+.lifeos-calendar .lifeos-event-cancelled {
+  text-decoration: line-through;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lifeos-calendar .fc-event {
+    transition: none;
+  }
+}

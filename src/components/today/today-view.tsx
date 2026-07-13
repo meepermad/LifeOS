@@ -14,6 +14,7 @@ import { EventListItem } from "@/components/events/event-list";
 import { PlanningControls } from "@/components/planning/planning-controls";
 import { WorkloadSummaryCard } from "@/components/workload/workload-summary-card";
 import { EmptyState, SectionCard } from "@/components/forms/ui";
+import { QuickAddMenu } from "@/components/quick-add/quick-add-menu";
 
 export function TodayView({
   events,
@@ -65,24 +66,14 @@ export function TodayView({
             {formatAppDate(today, "EEEE, MMMM d")}
             {academicBreakTitle ? ` · ${academicBreakTitle}` : ""}
           </p>
-          <Link href="/school" className="mt-1 inline-block text-xs text-accent">
+          <Link href="/calendar" className="mt-1 inline-block text-xs text-accent">
+            Open calendar
+          </Link>
+          <Link href="/school" className="mt-1 ml-3 inline-block text-xs text-accent">
             School & semester setup
           </Link>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href="/events/new"
-            className="rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white hover:bg-accent-hover"
-          >
-            + Event
-          </Link>
-          <Link
-            href="/tasks/new"
-            className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:border-accent"
-          >
-            + Task
-          </Link>
-        </div>
+        <QuickAddMenu />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

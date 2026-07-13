@@ -2,6 +2,9 @@ import { InitializationError } from "@/components/auth/initialization-error";
 import { ensureUserInitialized } from "@/lib/data/bootstrap";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { BottomNavigation } from "@/components/navigation/bottom-navigation";
+import { DesktopSidebar } from "@/components/navigation/desktop-sidebar";
+import { PersistentTimerBar } from "@/components/timer/persistent-timer-bar";
+import { StaleTimerBanner } from "@/components/timer/stale-timer-banner";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export default async function DashboardLayout({
@@ -24,7 +27,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="safe-top min-h-dvh bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+      <DesktopSidebar />
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md lg:pl-56">
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3 lg:max-w-6xl xl:max-w-7xl">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted">
@@ -36,10 +40,12 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg px-4 pb-24 pt-4 lg:max-w-6xl xl:max-w-7xl">
+      <main className="mx-auto max-w-lg px-4 pb-28 pt-4 lg:ml-56 lg:max-w-6xl xl:max-w-7xl">
         {initError ? <InitializationError message={initError} /> : children}
       </main>
 
+      <PersistentTimerBar />
+      <StaleTimerBanner />
       <BottomNavigation />
     </div>
   );

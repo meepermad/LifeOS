@@ -322,6 +322,7 @@ export async function saveCourseAction(
       name: parsed.name,
       section: parsed.section ?? null,
       color: parsed.color ?? null,
+      canvas_course_id: null,
     });
     revalidatePath("/school");
     return { success: true, data: { courseId: course.id } };
@@ -554,6 +555,7 @@ export async function resolveCanvasCandidateAction(input: {
       name: input.candidate.title,
       section: null,
       color: null,
+      canvas_course_id: null,
     });
 
     const meeting = await createClassMeeting({

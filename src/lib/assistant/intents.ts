@@ -121,6 +121,17 @@ export type ParsedCommand =
     }
   | { intent: "help" }
   | { intent: "clear_chat" }
+  | { intent: "start_timer"; taskTitle?: string }
+  | { intent: "stop_timer" }
+  | { intent: "pause_timer" }
+  | { intent: "resume_timer" }
+  | { intent: "log_time"; taskTitle?: string; durationMinutes?: number }
+  | { intent: "show_time_spent"; range?: DateRangeRef }
+  | { intent: "show_estimate_accuracy" }
+  | { intent: "show_time_breakdown"; range?: DateRangeRef }
+  | { intent: "show_workload_trends" }
+  | { intent: "explain_planning_estimate"; taskTitle?: string }
+  | { intent: "use_original_estimate"; taskTitle?: string }
   | { intent: "unknown"; raw: string };
 
 export type PartialCommand = Partial<
@@ -174,6 +185,12 @@ export const WRITE_INTENTS = new Set([
   "update_work_shift",
   "delete_work_shift",
   "copy_work_schedule",
+  "start_timer",
+  "stop_timer",
+  "pause_timer",
+  "resume_timer",
+  "log_time",
+  "use_original_estimate",
 ] as const);
 
 export const READ_ONLY_INTENTS = new Set([
@@ -189,4 +206,9 @@ export const READ_ONLY_INTENTS = new Set([
   "help",
   "show_work_schedule",
   "show_work_hours",
+  "show_time_spent",
+  "show_estimate_accuracy",
+  "show_time_breakdown",
+  "show_workload_trends",
+  "explain_planning_estimate",
 ] as const);

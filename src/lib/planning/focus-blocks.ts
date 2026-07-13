@@ -227,6 +227,17 @@ export function placeFocusBlock(input: {
     scheduledTaskMinutesBeforeProposal: scheduledBefore,
     preferenceMatches,
     preferenceViolations: slot.preferenceViolations,
+    calibration:
+      task.calibrationMeta && task.estimatedMinutes != null
+        ? {
+            userEstimate: task.estimatedMinutes,
+            effectiveEstimate:
+              task.effectiveEstimateMinutes ?? task.estimatedMinutes,
+            factor: task.calibrationMeta.factor,
+            sampleCount: task.calibrationMeta.sampleCount,
+            reason: task.calibrationMeta.reason,
+          }
+        : undefined,
   });
 
   return {

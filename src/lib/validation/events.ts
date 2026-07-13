@@ -125,6 +125,38 @@ export function parseEventForm(input: EventFormInput): ParsedEventTimes {
   }
 }
 
+export function parseEventTimesFromIso(input: {
+  startAt: string;
+  endAt: string;
+  allDay: boolean;
+  title: string;
+  description: string | null;
+  location: string | null;
+  calendarId: string;
+  eventType: EventType;
+  status: EventStatus;
+}): ParsedEventTimes {
+  const start = new Date(input.startAt);
+  const end = new Date(input.endAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new Error("Invalid date/time");
+  }
+  if (end <= start) {
+    throw new Error("End time must be after start time");
+  }
+  return {
+    title: input.title,
+    description: input.description,
+    location: input.location,
+    calendarId: input.calendarId,
+    eventType: input.eventType,
+    status: input.status,
+    allDay: input.allDay,
+    startAt: start.toISOString(),
+    endAt: end.toISOString(),
+  };
+}
+
 export const dateRangeQuerySchema = z
   .object({
     start: z.string().min(1),

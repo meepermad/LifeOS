@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
-  completeTaskAction,
   deleteTaskAction,
   reopenTaskAction,
 } from "@/lib/actions/tasks";
+import { CompletionReviewDialog } from "@/components/tasks/completion-review-dialog";
 import { formatAppDate, isOverdue, formatAppTimeRange } from "@/lib/dates/timezone";
 import type { TaskRow } from "@/types/domain";
 import type { TaskFocusScheduleSummary } from "@/lib/data/planning";
@@ -22,15 +22,13 @@ export function TaskListItem({
   focusSummary?: TaskFocusScheduleSummary;
 }) {  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [reviewOpen, setReviewOpen] = useState(false);
   const overdue = task.due_at ? isOverdue(task.due_at) : false;
   const missingEstimate =
     task.remaining_minutes == null && task.estimated_minutes == null;
 
   function handleComplete() {
-    startTransition(async () => {
-      await completeTaskAction(task.id);
-      router.refresh();
-    });
+    setReviewOpen(true);
   }
 
   function handleReopen() {
@@ -143,6 +141,11 @@ export function TaskListItem({
           Delete
         </DangerButton>
       </div>
+      <CompletionReviewDialog
+        taskId={task.id}
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+      />
     </article>
   );
 }

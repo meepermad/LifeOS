@@ -192,6 +192,38 @@ export async function deferTask(
   });
 }
 
+export async function returnTaskToInbox(taskId: string): Promise<TaskRow> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const task = await getTaskById(taskId);
+
+  if (!shouldAssignInboxAt(task)) {
+    throw new ConflictError("Sync-managed tasks cannot enter the inbox");
+  }
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ inbox_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new DatabaseError("Failed to return task to inbox");
+  }
+
+  return mapTaskRow(data);
+}
+
+export async function cancelTask(taskId: string): Promise<TaskRow> {
+  return triageTask(taskId, {
+    status: "cancelled",
+    waiting_reason: null,
+    waiting_follow_up_at: null,
+  });
+}
+
 export async function archiveInboxItem(taskId: string): Promise<TaskRow> {
   return triageTask(taskId, { workflow_state: "someday" });
 }

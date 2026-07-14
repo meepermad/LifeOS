@@ -45,10 +45,18 @@ export type WorkHoursSummary = {
   earliestStart: string | null;
   latestEnd: string | null;
   byDay: Record<string, { scheduledMinutes: number; workedMinutes: number }>;
+  byProfile: Record<string, {
+    displayName: string;
+    scheduledMinutes: number;
+    workedMinutes: number;
+    shiftCount: number;
+    averageShiftMinutes: number;
+  }>;
 };
 
 export function calculateWorkHours(
   events: EventWithCalendar[],
+  profileDisplayNames: Record<string, string> = {},
 ): WorkHoursSummary {
   const byDay: Record<string, { scheduledMinutes: number; workedMinutes: number }> =
     {};
@@ -56,6 +64,7 @@ export function calculateWorkHours(
   let workedMinutes = 0;
   let earliestStart: string | null = null;
   let latestEnd: string | null = null;
+  const byProfile: WorkHoursSummary["byProfile"] = {};
 
   for (const event of events) {
     if (event.status === "cancelled") continue;
@@ -75,6 +84,21 @@ export function calculateWorkHours(
     byDay[dateKey].scheduledMinutes += sched;
     byDay[dateKey].workedMinutes += worked;
 
+    const profileKey = event.work_profile_id ?? "unassigned";
+    const profile = (byProfile[profileKey] ??= {
+      displayName:
+        profileKey === "unassigned"
+          ? "Unassigned work"
+          : profileDisplayNames[profileKey] ?? event.title,
+      scheduledMinutes: 0,
+      workedMinutes: 0,
+      shiftCount: 0,
+      averageShiftMinutes: 0,
+    });
+    profile.scheduledMinutes += sched;
+    profile.workedMinutes += worked;
+    profile.shiftCount += 1;
+
     if (!earliestStart || event.start_at < earliestStart) {
       earliestStart = event.start_at;
     }
@@ -84,6 +108,10 @@ export function calculateWorkHours(
   }
 
   const shiftCount = events.filter((e) => e.status !== "cancelled").length;
+  for (const profile of Object.values(byProfile)) {
+    profile.averageShiftMinutes =
+      profile.shiftCount > 0 ? profile.workedMinutes / profile.shiftCount : 0;
+  }
 
   return {
     scheduledMinutes,
@@ -93,6 +121,7 @@ export function calculateWorkHours(
     earliestStart,
     latestEnd,
     byDay,
+    byProfile,
   };
 }
 
@@ -110,8 +139,18 @@ export function formatHoursMinutes(totalMinutes: number): string {
 export function formatWorkHoursSpoken(summary: WorkHoursSummary): string {
   const hours = summary.workedMinutes / 60;
   if (hours === 0) return "You have no scheduled work hours.";
-  if (Number.isInteger(hours)) {
-    return `You work ${hours} hour${hours === 1 ? "" : "s"} this week.`;
-  }
-  return `You work ${hours.toFixed(1)} hours this week.`;
+  const total =
+    Number.isInteger(hours)
+      ? `You work ${hours} hour${hours === 1 ? "" : "s"} this week.`
+      : `You work ${hours.toFixed(1)} hours this week.`;
+  const byJob = Object.values(summary.byProfile);
+  if (byJob.length <= 1) return total;
+  const parts = byJob.map((profile) => {
+    const profileHours = profile.workedMinutes / 60;
+    const label = Number.isInteger(profileHours)
+      ? `${profileHours}`
+      : profileHours.toFixed(1);
+    return `${profile.displayName}: ${label}`;
+  });
+  return `${total} By job: ${parts.join("; ")}.`;
 }

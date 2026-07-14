@@ -51,6 +51,20 @@ export function isDeferredHidden(
   return new Date(task.deferred_until_at) > now;
 }
 
+/** When defer expires, treat status as open for actionable listing/filtering. */
+export function normalizeDeferredStatus<
+  T extends Pick<TaskRow, "status" | "deferred_until_at">,
+>(task: T, now: Date = new Date()): T {
+  if (
+    task.status === "deferred" &&
+    task.deferred_until_at &&
+    new Date(task.deferred_until_at) <= now
+  ) {
+    return { ...task, status: "open" };
+  }
+  return task;
+}
+
 export function isActionableWorkload(
   task: TaskTriageFields,
   now: Date = new Date(),

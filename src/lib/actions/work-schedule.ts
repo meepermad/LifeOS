@@ -7,9 +7,16 @@ import { getProfile } from "@/lib/data/bootstrap";
 import { listEventsInRange } from "@/lib/data/events";
 import {
   applyWorkShiftReconciliation,
-  eventToShiftDayDraft,
+  assignWorkProfileToShifts,
+  eventToShiftSlotDraft,
   listWorkShiftsInRange,
 } from "@/lib/data/work-shifts";
+import {
+  archiveWorkProfile,
+  createWorkProfile,
+  listActiveWorkProfiles,
+  updateWorkProfile,
+} from "@/lib/data/work-profiles";
 import {
   createWorkShiftTemplate,
   deleteWorkShiftTemplate,
@@ -20,7 +27,7 @@ import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { AppError } from "@/lib/errors/app-error";
 import { getWeekBounds, getWeekDayKeys } from "@/lib/dates/timezone";
 import { addAppDays } from "@/lib/dates/timezone";
-import type { ShiftDayDraft } from "@/lib/work/shift-draft";
+import type { DayShiftDraft } from "@/lib/work/shift-draft";
 import { detectShiftConflicts } from "@/lib/work/shift-conflicts";
 import { reconcileWeeklyShifts } from "@/lib/work/shift-reconciliation";
 import { formatShiftPreviewList } from "@/lib/work/shift-preview";
@@ -31,15 +38,22 @@ export type ActionResult<T = void> =
   | { success: true; data?: T }
   | { success: false; error: string; fieldErrors?: Record<string, string> };
 
-const shiftDaySchema = z.object({
+const shiftSlotSchema = z.object({
+  clientId: z.string(),
   dateKey: z.string(),
-  isOff: z.boolean(),
   startTime: z.string(),
   endTime: z.string(),
   unpaidBreakMinutes: z.number().int().min(0).max(479),
   location: z.string(),
   note: z.string(),
   eventId: z.string().optional(),
+  workProfileId: z.string().nullable().optional(),
+  externalEventId: z.string().optional(),
+  displayTitle: z.string().optional(),
+});
+const shiftDaySchema = z.object({
+  dateKey: z.string(),
+  shifts: z.array(shiftSlotSchema),
 });
 
 const previewSchema = z.object({
@@ -90,7 +104,9 @@ export async function previewWorkScheduleAction(
     await requireAllowedUser();
     const parsed = previewSchema.parse(input);
     const profile = await getProfile();
-    const { shifts, errors } = parseWeeklyDraft(parsed.days, profile.timezone);
+    const workProfiles = await listActiveWorkProfiles();
+    const profileNames = Object.fromEntries(workProfiles.map((item) => [item.id, item.display_name]));
+    const { shifts, errors } = parseWeeklyDraft(parsed.days, profile.timezone, profileNames);
 
     if (errors.length > 0) {
       return { success: false, error: errors[0]?.message ?? "Invalid shift data" };
@@ -153,7 +169,9 @@ export async function saveWorkScheduleAction(
     await requireAllowedUser();
     const parsed = saveSchema.parse(input);
     const profile = await getProfile();
-    const { shifts, errors } = parseWeeklyDraft(parsed.days, profile.timezone);
+    const workProfiles = await listActiveWorkProfiles();
+    const profileNames = Object.fromEntries(workProfiles.map((item) => [item.id, item.display_name]));
+    const { shifts, errors } = parseWeeklyDraft(parsed.days, profile.timezone, profileNames);
 
     if (errors.length > 0) {
       return { success: false, error: errors[0]?.message ?? "Invalid shift data" };
@@ -221,7 +239,7 @@ export async function getWorkHoursSummaryAction(weekOffset = 0) {
 
 export async function copyPreviousWeekDraftAction(
   weekStartKey: string,
-): Promise<ActionResult<{ days: ShiftDayDraft[] }>> {
+): Promise<ActionResult<{ days: DayShiftDraft[] }>> {
   try {
     await requireAllowedUser();
     const profile = await getProfile();
@@ -240,31 +258,22 @@ export async function copyPreviousWeekDraftAction(
       profile.week_starts_on as 0 | 1,
     );
 
-    const days: ShiftDayDraft[] = dayKeys.map((dateKey) => {
+    const days: DayShiftDraft[] = dayKeys.map((dateKey) => {
       const prevDateKey = addAppDays(dateKey, -7);
-      const prevShift = prevShifts.find(
-        (s) =>
-          s.external_event_id === `work-shift:${prevDateKey}` ||
-          s.start_at.startsWith(prevDateKey),
-      );
-
-      if (!prevShift) {
-        return {
-          dateKey,
-          isOff: true,
-          startTime: "",
-          endTime: "",
-          unpaidBreakMinutes: 0,
-          location: "",
-          note: "",
-        };
-      }
-
-      const draft = eventToShiftDayDraft(prevShift);
       return {
-        ...draft,
         dateKey,
-        eventId: undefined,
+        shifts: prevShifts
+          .filter((shift) => shift.start_at.startsWith(prevDateKey))
+          .map((shift) => {
+            const draft = eventToShiftSlotDraft(shift);
+            return {
+              ...draft,
+              clientId: crypto.randomUUID(),
+              dateKey,
+              eventId: undefined,
+              externalEventId: undefined,
+            };
+          }),
       };
     });
     return { success: true, data: { days } };
@@ -291,6 +300,7 @@ export async function saveTemplateAction(input: {
   unpaidBreakMinutes?: number;
   location?: string;
   label?: string;
+  workProfileId?: string | null;
 }) {
   try {
     await requireAllowedUser();
@@ -299,6 +309,56 @@ export async function saveTemplateAction(input: {
       : await createWorkShiftTemplate(input);
     revalidatePath("/work");
     return { success: true as const, data };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function saveWorkProfileAction(input: {
+  id?: string;
+  employerName: string;
+  roleTitle?: string;
+  displayName: string;
+  defaultLocation?: string;
+  defaultUnpaidBreakMinutes?: number;
+  iconKey?: string;
+}) {
+  try {
+    await requireAllowedUser();
+    const data = input.id
+      ? await updateWorkProfile(input.id, input)
+      : await createWorkProfile(input);
+    revalidatePath("/work");
+    return { success: true as const, data };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function archiveWorkProfileAction(profileId: string) {
+  try {
+    await requireAllowedUser();
+    await archiveWorkProfile(profileId);
+    revalidatePath("/work");
+    return { success: true as const };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function assignUnassignedShiftsAction(input: {
+  ids: string[];
+  profileId: string;
+  preview?: boolean;
+}) {
+  try {
+    await requireAllowedUser();
+    if (input.preview) {
+      return { success: true as const, data: { count: input.ids.length } };
+    }
+    const count = await assignWorkProfileToShifts(input.ids, input.profileId);
+    revalidatePath("/work");
+    return { success: true as const, data: { count } };
   } catch (error) {
     return toActionError(error);
   }

@@ -1,6 +1,6 @@
 import type { EventWithCalendar } from "@/lib/data/events";
 import type { ParsedShift } from "@/lib/work/shift-validation";
-import { workShiftExternalId } from "@/lib/work/shift-draft";
+import { newWorkShiftExternalId } from "@/lib/work/shift-draft";
 
 export type ShiftReconciliationItem = {
   dateKey: string;
@@ -23,7 +23,8 @@ function shiftsEqual(existing: EventWithCalendar, shift: ParsedShift): boolean {
     (existing.unpaid_break_minutes ?? 0) === shift.unpaidBreakMinutes &&
     (existing.location ?? "") === (shift.location ?? "") &&
     (existing.shift_note ?? "") === (shift.note ?? "") &&
-    existing.title === shift.title
+    existing.title === shift.title &&
+    (existing.work_profile_id ?? null) === (shift.workProfileId ?? null)
   );
 }
 
@@ -35,15 +36,12 @@ export function reconcileWeeklyShifts(input: {
   items: ShiftReconciliationItem[];
   omitted: OmittedShift[];
 } {
-  const existingByDate = new Map<string, EventWithCalendar>();
   const existingById = new Map<string, EventWithCalendar>();
+  const existingByExternalId = new Map<string, EventWithCalendar>();
 
   for (const event of input.existingShifts) {
-    const dateKey =
-      event.external_event_id?.replace("work-shift:", "") ??
-      event.start_at.slice(0, 10);
-    existingByDate.set(dateKey, event);
     existingById.set(event.id, event);
+    if (event.external_event_id) existingByExternalId.set(event.external_event_id, event);
   }
 
   const items: ShiftReconciliationItem[] = [];
@@ -52,7 +50,9 @@ export function reconcileWeeklyShifts(input: {
   for (const shift of input.draftShifts) {
     const existing =
       (shift.eventId ? existingById.get(shift.eventId) : undefined) ??
-      existingByDate.get(shift.dateKey);
+      (shift.externalEventId
+        ? existingByExternalId.get(shift.externalEventId)
+        : undefined);
 
     if (!existing) {
       items.push({ dateKey: shift.dateKey, action: "created", shift });
@@ -72,7 +72,11 @@ export function reconcileWeeklyShifts(input: {
       items.push({
         dateKey: shift.dateKey,
         action: "updated",
-        shift: { ...shift, eventId: existing.id },
+        shift: {
+          ...shift,
+          eventId: existing.id,
+          externalEventId: existing.external_event_id ?? shift.externalEventId,
+        },
         eventId: existing.id,
       });
     }
@@ -81,9 +85,7 @@ export function reconcileWeeklyShifts(input: {
   const omitted: OmittedShift[] = [];
   for (const event of input.existingShifts) {
     if (touchedIds.has(event.id)) continue;
-    const dateKey =
-      event.external_event_id?.replace("work-shift:", "") ??
-      event.start_at.slice(0, 10);
+    const dateKey = event.start_at.slice(0, 10);
     omitted.push({
       eventId: event.id,
       dateKey,
@@ -102,6 +104,6 @@ export function reconcileWeeklyShifts(input: {
   return { items, omitted };
 }
 
-export function buildShiftExternalId(dateKey: string): string {
-  return workShiftExternalId(dateKey);
+export function buildShiftExternalId(existingExternalEventId?: string | null): string {
+  return existingExternalEventId ?? newWorkShiftExternalId();
 }

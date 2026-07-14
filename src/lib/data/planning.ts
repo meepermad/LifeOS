@@ -1,4 +1,4 @@
-import { DatabaseError } from "@/lib/errors/app-error";
+import { ConflictError, DatabaseError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/data/bootstrap";
@@ -462,6 +462,18 @@ export async function getTaskFocusScheduleSummaries(
     throw new DatabaseError("Failed to load focus blocks");
   }
 
+  const { data: pendingProposals, error: proposalsError } = await supabase
+    .from("planning_proposals")
+    .select("task_id, proposed_start_at, proposed_end_at, proposed_minutes, status")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .in("task_id", taskIds)
+    .gte("proposed_start_at", now);
+
+  if (proposalsError) {
+    throw new DatabaseError("Failed to load pending planning proposals");
+  }
+
   const byTask = new Map<string, typeof events>();
 
   for (const event of events ?? []) {
@@ -469,6 +481,16 @@ export async function getTaskFocusScheduleSummaries(
     const list = byTask.get(event.related_task_id) ?? [];
     list.push(event);
     byTask.set(event.related_task_id, list);
+  }
+
+  const pendingMinutesByTask = new Map<string, number>();
+  for (const proposal of pendingProposals ?? []) {
+    if (!proposal.task_id) continue;
+    pendingMinutesByTask.set(
+      proposal.task_id,
+      (pendingMinutesByTask.get(proposal.task_id) ?? 0) +
+        (proposal.proposed_minutes ?? 0),
+    );
   }
 
   for (const task of tasks) {
@@ -484,6 +506,8 @@ export async function getTaskFocusScheduleSummaries(
       );
       futureScheduledFocusMinutes += minutes;
     }
+
+    futureScheduledFocusMinutes += pendingMinutesByTask.get(task.id) ?? 0;
 
     const unscheduledRemainingMinutes =
       remaining != null
@@ -553,9 +577,37 @@ export async function createShelfPlanningProposal(input: {
   taskId: string;
   proposedStartAt: string;
   proposedEndAt: string;
-}): Promise<{ proposalId: string; planningRunId: string }> {
+  clientRequestId?: string;
+}): Promise<{ proposalId: string; planningRunId: string; idempotent?: boolean }> {
   const user = await requireAllowedUser();
   const supabase = await createClient();
+
+  if (input.clientRequestId) {
+    const { data: existingRequest } = await supabase
+      .from("planning_client_requests")
+      .select("proposal_id")
+      .eq("user_id", user.id)
+      .eq("client_request_id", input.clientRequestId)
+      .maybeSingle();
+
+    if (existingRequest?.proposal_id) {
+      const { data: existingProposal } = await supabase
+        .from("planning_proposals")
+        .select("id, planning_run_id")
+        .eq("id", existingRequest.proposal_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingProposal) {
+        return {
+          proposalId: existingProposal.id,
+          planningRunId: existingProposal.planning_run_id,
+          idempotent: true,
+        };
+      }
+    }
+  }
+
   const task = await getTaskById(input.taskId);
 
   const proposedMinutes = Math.max(
@@ -566,6 +618,18 @@ export async function createShelfPlanningProposal(input: {
         60_000,
     ),
   );
+
+  const summaries = await getTaskFocusScheduleSummaries([task]);
+  const unscheduledRemaining =
+    summaries.get(task.id)?.unscheduledRemainingMinutes ?? 0;
+  if (unscheduledRemaining <= 0) {
+    throw new ConflictError("This task has no remaining unscheduled work");
+  }
+  if (proposedMinutes > unscheduledRemaining) {
+    throw new ConflictError(
+      "Proposed block exceeds remaining unscheduled work",
+    );
+  }
 
   const now = new Date();
   const events = await listEventsInRange(
@@ -593,10 +657,13 @@ export async function createShelfPlanningProposal(input: {
   );
 
   const taskRemaining = getTaskWorkloadMinutes(planningTask) ?? 0;
-  const unscheduled = getUnscheduledRemainingMinutes(
-    planningTask,
-    events.map(toPlanningEvent),
-    now,
+  const unscheduled = Math.min(
+    unscheduledRemaining,
+    getUnscheduledRemainingMinutes(
+      planningTask,
+      events.map(toPlanningEvent),
+      now,
+    ),
   );
   const scheduledBefore = getFutureConfirmedFocusMinutesForTask(
     planningTask,
@@ -642,6 +709,44 @@ export async function createShelfPlanningProposal(input: {
 
   if (error || !proposal) {
     throw new DatabaseError("Failed to create planning proposal");
+  }
+
+  if (input.clientRequestId) {
+    const { error: requestError } = await supabase
+      .from("planning_client_requests")
+      .insert({
+        user_id: user.id,
+        client_request_id: input.clientRequestId,
+        proposal_id: proposal.id,
+      });
+
+    if (requestError?.code === "23505") {
+      const { data: raced } = await supabase
+        .from("planning_client_requests")
+        .select("proposal_id")
+        .eq("user_id", user.id)
+        .eq("client_request_id", input.clientRequestId)
+        .maybeSingle();
+
+      if (raced?.proposal_id) {
+        const { data: existingProposal } = await supabase
+          .from("planning_proposals")
+          .select("id, planning_run_id")
+          .eq("id", raced.proposal_id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingProposal) {
+          return {
+            proposalId: existingProposal.id,
+            planningRunId: existingProposal.planning_run_id,
+            idempotent: true,
+          };
+        }
+      }
+    } else if (requestError) {
+      throw new DatabaseError("Failed to record planning client request");
+    }
   }
 
   return { proposalId: proposal.id, planningRunId: run.id };

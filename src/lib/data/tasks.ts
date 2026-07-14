@@ -100,7 +100,9 @@ export async function listTasks(options?: {
     });
   }
 
-  return mapTaskRows(tasks);
+  const { normalizeDeferredStatus } = await import("@/lib/tasks/triage");
+  const now = new Date();
+  return mapTaskRows(tasks).map((task) => normalizeDeferredStatus(task, now));
 }
 
 export async function getTaskById(taskId: string): Promise<TaskRow> {

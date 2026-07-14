@@ -27,6 +27,9 @@ function makeTemplate(
     occurrence_limit: null,
     is_active: true,
     paused_at: null,
+    archived_at: null,
+    ended_at: null,
+    future_edit_policy: "update_future_incomplete",
     created_at: "",
     updated_at: "",
     ...overrides,
@@ -118,12 +121,12 @@ describe("generateOccurrencesForTemplate", () => {
     expect(result).toHaveLength(3);
   });
 
-  it("respects occurrence limit", () => {
+  it("does not apply lifetime occurrence_limit in the pure generator window", () => {
     const result = generateOccurrencesForTemplate(
       makeTemplate({ occurrence_limit: 3 }),
       { from: "2026-07-01", to: "2026-07-10" },
     );
-    expect(result).toHaveLength(3);
+    expect(result.length).toBeGreaterThan(3);
   });
 
   it("returns empty when paused", () => {

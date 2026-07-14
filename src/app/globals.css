@@ -49,3 +49,9 @@ body {
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe\:animate-pulse {
+    animation: none !important;
+  }
+}

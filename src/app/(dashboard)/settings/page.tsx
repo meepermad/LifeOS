@@ -17,9 +17,11 @@ import { NotificationSettings } from "@/components/notifications/notification-se
 import { SectionCard } from "@/components/forms/ui";
 import { ShortcutDeviceSettings } from "@/components/settings/shortcut-device-settings";
 import { AssistantLanguageFallbackSettings } from "@/components/settings/assistant-language-fallback-settings";
+import { ExportCenter } from "@/components/settings/export-center";
 import { listShortcutDevices } from "@/lib/data/shortcut-devices";
 import { getServerEnv } from "@/lib/security/env";
 import { getAiIntentRouterStatus } from "@/lib/assistant/ai-intent-router/router";
+import { getAppVersionLabel } from "@/lib/status/system-status";
 
 export default async function SettingsPage() {
   const user = await requireAllowedUser();
@@ -61,10 +63,20 @@ export default async function SettingsPage() {
             <dt className="text-muted">Time zone</dt>
             <dd className="text-right text-foreground">{profile.timezone}</dd>
           </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">App version</dt>
+            <dd className="text-right text-foreground">{getAppVersionLabel()}</dd>
+          </div>
         </dl>
         <div className="mt-4">
           <ProfileSettingsForm weekStartsOn={profile.week_starts_on} />
         </div>
+        <Link
+          href="/status"
+          className="mt-3 inline-block text-sm text-accent hover:text-accent-hover"
+        >
+          Open system status →
+        </Link>
       </SectionCard>
 
       <SectionCard
@@ -170,6 +182,13 @@ export default async function SettingsPage() {
           initialDevices={shortcutDevices}
           apiUrl={shortcutApiUrl}
         />
+      </SectionCard>
+
+      <SectionCard
+        title="Export center"
+        description="Download read-only copies of your LifeOS planning data."
+      >
+        <ExportCenter />
       </SectionCard>
 
       <SectionCard title="PWA">

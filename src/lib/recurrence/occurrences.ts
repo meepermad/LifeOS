@@ -291,11 +291,7 @@ export function generateOccurrencesForTemplate(
     options.to,
   );
 
-  let occurrences = applyExceptions(raw, options.exceptions ?? []);
-
-  if (template.occurrence_limit != null) {
-    occurrences = occurrences.slice(0, template.occurrence_limit);
-  }
+  const occurrences = applyExceptions(raw, options.exceptions ?? []);
 
   return occurrences.filter(
     (o) => o.scheduledDate >= options.from && o.scheduledDate <= options.to,

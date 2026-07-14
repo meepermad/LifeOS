@@ -1,8 +1,6 @@
 import { matchTasks } from "@/lib/assistant/entity-matcher";
 import {
-  addAppDays,
   getAppLocalDateKey,
-  getDayBoundsInUtc,
   getTodayBoundsUtc,
   isOverdue,
   nowInAppTimezone,
@@ -33,6 +31,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RecurrenceTemplate } from "@/lib/recurrence/types";
 import type { TaskRow } from "@/types/domain";
+
+export { previewUnfinishedRollover } from "@/lib/reviews/rollover";
 
 export async function resolveTaskForUser(
   taskTitle: string,
@@ -150,33 +150,6 @@ export async function getHelpPlanTodaySummary() {
   };
 }
 
-export async function previewUnfinishedRollover(targetDateKey: string) {
-  const bounds = getDayBoundsInUtc(targetDateKey);
-  const tasks = await listTasks({ status: "active" });
-  const summaries = await getTaskFocusScheduleSummaries(tasks);
-
-  const previews = tasks
-    .filter((task) => {
-      if (!isActionableWorkload(task)) return false;
-      const summary = summaries.get(task.id);
-      return (summary?.unscheduledRemainingMinutes ?? 0) > 0;
-    })
-    .slice(0, 8)
-    .map((task) => ({
-      taskId: task.id,
-      title: task.title,
-      remainingMinutes:
-        summaries.get(task.id)?.unscheduledRemainingMinutes ?? null,
-      suggestedDateKey: addAppDays(targetDateKey, 1),
-    }));
-
-  return {
-    sourceDateKey: targetDateKey,
-    periodEnd: bounds.end.toISOString(),
-    previews,
-  };
-}
-
 export async function recordKeepOverdueDecision(taskId: string) {
   const user = await requireAllowedUser();
   const admin = createAdminClient() as ReturnType<typeof createAdminClient> &
@@ -199,7 +172,7 @@ export async function recordKeepOverdueDecision(taskId: string) {
       user_id: user.id,
       session_id: session.id,
       task_id: taskId,
-      decision_type: "keep_due",
+      decision_type: "keep_due_date",
       decision_payload: { kept_overdue_at: new Date().toISOString() },
     });
   }

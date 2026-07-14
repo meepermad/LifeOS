@@ -19,6 +19,8 @@ export type TaskRow = Omit<
   | "recurrence_template_id"
   | "recurrence_occurrence_key"
   | "parent_task_id"
+  | "is_manually_customized"
+  | "manually_detached_from_recurrence"
 > & {
   planning_estimate_override?: string | null;
   course_id?: string | null;
@@ -30,6 +32,8 @@ export type TaskRow = Omit<
   recurrence_template_id?: string | null;
   recurrence_occurrence_key?: string | null;
   parent_task_id?: string | null;
+  is_manually_customized?: boolean;
+  manually_detached_from_recurrence?: boolean;
 };
 export type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
 export type AvailabilityRuleRow =
@@ -182,6 +186,7 @@ export type AssistantActionStatus =
 
 export type WorkShiftTemplateRow =
   Database["public"]["Tables"]["work_shift_templates"]["Row"];
+export type WorkProfileRow = Database["public"]["Tables"]["work_profiles"]["Row"];
 
 export type ShortcutDeviceRow =
   Database["public"]["Tables"]["shortcut_devices"]["Row"];

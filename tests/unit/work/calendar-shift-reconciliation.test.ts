@@ -14,6 +14,7 @@ function makeEvent(overrides: Partial<EventWithCalendar>): EventWithCalendar {
     calendar_id: "cal-work",
     class_meeting_id: null,
     external_event_id: "work-shift:2026-07-13",
+    work_profile_id: null,
     title: "Work",
     description: null,
     location: "Office",
@@ -92,8 +93,8 @@ describe("calendar work-shift reconciliation", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.action).toBe("updated");
     expect(items[0]?.shift?.dateKey).toBe("2026-07-14");
-    expect(buildShiftExternalId(items[0]!.shift!.dateKey)).toBe(
-      "work-shift:2026-07-14",
+    expect(buildShiftExternalId()).toMatch(
+      /^work-shift:[0-9a-f-]{36}$/,
     );
   });
 

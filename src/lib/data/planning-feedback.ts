@@ -1,4 +1,4 @@
-import { DatabaseError } from "@/lib/errors/app-error";
+import { DatabaseError, ValidationError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +14,40 @@ export type PlanningFeedbackRow = {
   created_at: string;
 };
 
+async function assertPartialMinutesWithinBlockDuration(
+  eventId: string,
+  userId: string,
+  partialMinutes: number | null | undefined,
+): Promise<void> {
+  if (partialMinutes == null) return;
+  if (partialMinutes < 0) {
+    throw new ValidationError("Partial minutes must be non-negative");
+  }
+
+  const supabase = await createClient();
+  const { data: event, error } = await supabase
+    .from("events")
+    .select("start_at, end_at")
+    .eq("id", eventId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !event) {
+    throw new DatabaseError("Failed to load planning block for feedback");
+  }
+
+  const durationMinutes = Math.floor(
+    (new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) /
+      60_000,
+  );
+
+  if (partialMinutes > durationMinutes) {
+    throw new ValidationError(
+      "Partial minutes cannot exceed the planning block duration",
+    );
+  }
+}
+
 export async function upsertPlanningBlockFeedback(input: {
   eventId: string;
   feedback: PlanningBlockFeedback;
@@ -23,6 +57,14 @@ export async function upsertPlanningBlockFeedback(input: {
 }): Promise<PlanningFeedbackRow> {
   const user = await requireAllowedUser();
   const supabase = await createClient();
+
+  if (input.feedback === "partial") {
+    await assertPartialMinutesWithinBlockDuration(
+      input.eventId,
+      user.id,
+      input.partialMinutes,
+    );
+  }
 
   const { data: existing } = await supabase
     .from("planning_block_feedback")

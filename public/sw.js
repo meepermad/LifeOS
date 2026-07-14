@@ -1,11 +1,11 @@
-const CACHE_NAME = "lifeos-shell-v1";
+const CACHE_NAME = "lifeos-shell-v2";
 const SHELL_URLS = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_URLS)),
   );
-  self.skipWaiting();
+  // Do not skipWaiting immediately — client confirms update via postMessage.
 });
 
 self.addEventListener("activate", (event) => {
@@ -19,6 +19,12 @@ self.addEventListener("activate", (event) => {
     ),
   );
   self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -48,7 +54,7 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-const ALLOWED_ROUTES = ["/today", "/week", "/tasks", "/settings"];
+const ALLOWED_ROUTES = ["/today", "/week", "/tasks", "/settings", "/status", "/work", "/calendar"];
 
 function sanitizeUrl(url) {
   if (typeof url !== "string" || !url.startsWith("/")) return "/today";
@@ -85,8 +91,6 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
       data: { url: payload.url },
     }),
   );
@@ -94,21 +98,18 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = sanitizeUrl(event.notification.data?.url ?? "/today");
-
+  const url = sanitizeUrl(event.notification.data && event.notification.data.url);
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          return client.focus().then((focused) => {
-            if (focused && "navigate" in focused) {
-              return focused.navigate(url);
-            }
-            return undefined;
-          });
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(url);
+          return client.focus();
         }
       }
-      return clients.openWindow(url);
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(url);
+      }
     }),
   );
 });

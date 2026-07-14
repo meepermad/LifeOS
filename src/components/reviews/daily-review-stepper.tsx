@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  applyReviewDecisionAction,
   completeReviewSessionAction,
-  recordReviewDecisionAction,
   saveDailyPrioritiesAction,
   startReviewSessionAction,
+  updateSessionStepAction,
 } from "@/lib/actions/reviews";
 import { formatAppTimeRange } from "@/lib/dates/timezone";
 import {
@@ -36,14 +37,49 @@ import { EventListItem } from "@/components/events/event-list";
 const EVENING_DECISIONS: Array<{
   type: ReviewDecisionType;
   label: string;
+  hint: string;
 }> = [
-  { type: "keep_due_date", label: "Keep due date" },
-  { type: "schedule_tomorrow", label: "Schedule tomorrow" },
-  { type: "return_to_inbox", label: "Return to inbox" },
-  { type: "mark_waiting", label: "Mark waiting" },
-  { type: "defer", label: "Defer" },
-  { type: "cancel", label: "Cancel" },
+  {
+    type: "keep_due_date",
+    label: "Keep due date",
+    hint: "Deadline stays; overdue nag suppressed",
+  },
+  {
+    type: "change_deadline",
+    label: "Change deadline",
+    hint: "Moves due date to tomorrow",
+  },
+  {
+    type: "schedule_tomorrow",
+    label: "Schedule work tomorrow (keep deadline)",
+    hint: "Creates a planning proposal; due date unchanged",
+  },
+  {
+    type: "return_to_inbox",
+    label: "Return to inbox",
+    hint: "Returns task to inbox for re-triage",
+  },
+  {
+    type: "mark_waiting",
+    label: "Mark waiting",
+    hint: "Sets waiting state; deadline unchanged",
+  },
+  {
+    type: "defer",
+    label: "Defer",
+    hint: "Hides until tomorrow; deadline unchanged",
+  },
+  {
+    type: "cancel",
+    label: "Cancel",
+    hint: "Cancels the task",
+  },
 ];
+
+function clampStep(index: number, length: number): number {
+  if (!Number.isFinite(index) || index < 0) return 0;
+  return Math.min(Math.floor(index), length - 1);
+}
 
 export function DailyReviewStepper({
   context,
@@ -53,7 +89,15 @@ export function DailyReviewStepper({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
+  const steps =
+    context.period === "morning"
+      ? MORNING_REVIEW_STEPS
+      : EVENING_REVIEW_STEPS;
+  const initialStep = clampStep(
+    context.session?.current_step ?? 0,
+    steps.length,
+  );
+  const [stepIndex, setStepIndex] = useState(initialStep);
   const [sessionId, setSessionId] = useState<string | null>(
     context.session?.id ?? context.completedSession?.id ?? null,
   );
@@ -66,10 +110,6 @@ export function DailyReviewStepper({
     Record<string, ReviewDecisionType>
   >({});
 
-  const steps =
-    context.period === "morning"
-      ? MORNING_REVIEW_STEPS
-      : EVENING_REVIEW_STEPS;
   const currentStep = steps[stepIndex];
   const isComplete = Boolean(context.completedSession);
   const insights = useMemo(
@@ -97,6 +137,13 @@ export function DailyReviewStepper({
       }
     });
   }, [context.dateKey, context.period, isComplete, sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || isComplete) return;
+    startTransition(async () => {
+      await updateSessionStepAction({ sessionId, step: stepIndex });
+    });
+  }, [sessionId, stepIndex, isComplete]);
 
   function goNext() {
     setStepIndex((index) => Math.min(index + 1, steps.length - 1));
@@ -143,11 +190,15 @@ export function DailyReviewStepper({
     if (!sessionId) return;
     setTaskDecisions((current) => ({ ...current, [taskId]: decisionType }));
     startTransition(async () => {
-      await recordReviewDecisionAction({
+      setError(null);
+      const result = await applyReviewDecisionAction({
         sessionId,
         taskId,
         decisionType,
       });
+      if (!result.success) {
+        setError(result.error);
+      }
     });
   }
 
@@ -189,7 +240,7 @@ export function DailyReviewStepper({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">
@@ -199,20 +250,24 @@ export function DailyReviewStepper({
             {currentStep?.label}
           </h2>
         </div>
-        <div className="flex gap-1">
+        <ol className="flex gap-1" aria-label="Review progress">
           {steps.map((step, index) => (
-            <span
-              key={step.id}
-              className={`h-2 w-2 rounded-full ${
-                index <= stepIndex ? "bg-accent" : "bg-border"
-              }`}
-              aria-hidden="true"
-            />
+            <li key={step.id}>
+              <span
+                className={`block h-2 w-2 rounded-full ${
+                  index <= stepIndex ? "bg-accent" : "bg-border"
+                }`}
+                aria-current={index === stepIndex ? "step" : undefined}
+                aria-label={`${step.label}${index === stepIndex ? ", current" : ""}`}
+              />
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
 
-      <ReviewInsightsCard insights={insights} />
+      {currentStep?.id === "confirm" && (
+        <ReviewInsightsCard insights={insights} />
+      )}
 
       {context.period === "morning" && currentStep?.id === "timer" && (
         <SectionCard title="Active timer">
@@ -222,7 +277,7 @@ export function DailyReviewStepper({
               thresholdHours={4}
             />
           ) : context.activeTimer ? (
-            <p className="text-sm text-foreground">
+            <p className="truncate text-sm text-foreground">
               Timer running on &ldquo;
               {context.activeTimer.entry.task_title_snapshot ?? "a task"}&rdquo;.
             </p>
@@ -242,7 +297,7 @@ export function DailyReviewStepper({
                 <li key={task.id}>
                   <Link
                     href={`/tasks/${task.id}/edit`}
-                    className="text-sm text-danger hover:underline"
+                    className="block truncate text-sm text-danger hover:underline"
                   >
                     {task.title}
                   </Link>
@@ -280,14 +335,16 @@ export function DailyReviewStepper({
                 const selected = selectedPriorityIds.includes(task.id);
                 return (
                   <li key={task.id}>
-                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 hover:border-accent">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2.5 hover:border-accent">
                       <input
                         type="checkbox"
                         checked={selected}
                         onChange={() => togglePriority(task.id)}
-                        className="h-4 w-4 rounded border-border text-accent"
+                        className="h-4 w-4 shrink-0 rounded border-border text-accent"
                       />
-                      <span className="text-sm text-foreground">{task.title}</span>
+                      <span className="truncate text-sm text-foreground">
+                        {task.title}
+                      </span>
                     </label>
                   </li>
                 );
@@ -320,7 +377,10 @@ export function DailyReviewStepper({
           ) : (
             <ul className="space-y-2">
               {context.completedToday.map((task) => (
-                <li key={task.id} className="text-sm text-foreground">
+                <li
+                  key={task.id}
+                  className="truncate text-sm text-foreground"
+                >
                   {task.title}
                 </li>
               ))}
@@ -340,7 +400,7 @@ export function DailyReviewStepper({
                   key={task.id}
                   className="rounded-lg border border-border px-3 py-3"
                 >
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {task.title}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -348,10 +408,11 @@ export function DailyReviewStepper({
                       <button
                         key={decision.type}
                         type="button"
+                        title={decision.hint}
                         onClick={() =>
                           handleRecordDecision(task.id, decision.type)
                         }
-                        className={`rounded-lg border px-2 py-1 text-xs transition-colors ${
+                        className={`min-h-10 rounded-lg border px-3 py-2.5 text-xs transition-colors ${
                           taskDecisions[task.id] === decision.type
                             ? "border-accent bg-accent/15 text-accent"
                             : "border-border text-muted hover:border-accent hover:text-foreground"
@@ -361,6 +422,14 @@ export function DailyReviewStepper({
                       </button>
                     ))}
                   </div>
+                  <p className="mt-2 text-xs text-muted">
+                    {taskDecisions[task.id]
+                      ? EVENING_DECISIONS.find(
+                          (decision) =>
+                            decision.type === taskDecisions[task.id],
+                        )?.hint
+                      : "Select an action to apply it and record the decision."}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -378,7 +447,7 @@ export function DailyReviewStepper({
                 <li key={block.eventId}>
                   <Link
                     href={`/calendar`}
-                    className="text-sm text-foreground hover:text-accent"
+                    className="block truncate text-sm text-foreground hover:text-accent"
                   >
                     {block.title}
                   </Link>
@@ -396,7 +465,7 @@ export function DailyReviewStepper({
         <SectionCard title="Tomorrow preview">
           {context.tomorrowFirstCommitment ? (
             <div>
-              <p className="text-sm font-medium text-foreground">
+              <p className="truncate text-sm font-medium text-foreground">
                 First commitment: {context.tomorrowFirstCommitment.title}
               </p>
               <p className="mt-1 text-sm text-muted">
@@ -414,7 +483,7 @@ export function DailyReviewStepper({
           {context.tomorrowEvents.length > 1 && (
             <ul className="mt-4 space-y-2">
               {context.tomorrowEvents.slice(1, 4).map((event) => (
-                <li key={event.id} className="text-sm text-muted">
+                <li key={event.id} className="truncate text-sm text-muted">
                   {event.title}
                 </li>
               ))}
@@ -439,25 +508,27 @@ export function DailyReviewStepper({
         </p>
       )}
 
-      <div className="flex gap-3">
-        {stepIndex > 0 && (
-          <SecondaryButton disabled={isPending} onClick={goBack}>
-            Back
-          </SecondaryButton>
-        )}
-        {currentStep?.id === "priorities" && context.period === "morning" ? (
-          <PrimaryButton loading={isPending} onClick={handleSavePriorities}>
-            Save priorities
-          </PrimaryButton>
-        ) : stepIndex < steps.length - 1 ? (
-          <PrimaryButton disabled={isPending} onClick={goNext}>
-            Continue
-          </PrimaryButton>
-        ) : (
-          <PrimaryButton loading={isPending} onClick={handleComplete}>
-            Complete review
-          </PrimaryButton>
-        )}
+      <div className="safe-bottom fixed inset-x-0 bottom-16 z-40 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0 lg:left-56">
+        <div className="mx-auto flex max-w-lg gap-3 lg:max-w-6xl">
+          {stepIndex > 0 && (
+            <SecondaryButton disabled={isPending} onClick={goBack}>
+              Back
+            </SecondaryButton>
+          )}
+          {currentStep?.id === "priorities" && context.period === "morning" ? (
+            <PrimaryButton loading={isPending} onClick={handleSavePriorities}>
+              Save priorities
+            </PrimaryButton>
+          ) : stepIndex < steps.length - 1 ? (
+            <PrimaryButton disabled={isPending} onClick={goNext}>
+              Continue
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton loading={isPending} onClick={handleComplete}>
+              Complete review
+            </PrimaryButton>
+          )}
+        </div>
       </div>
     </div>
   );

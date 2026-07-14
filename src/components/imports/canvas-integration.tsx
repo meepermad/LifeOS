@@ -258,7 +258,8 @@ export function CanvasIntegration({
           <>
             <PrimaryButton
               type="button"
-              loading={isPending}
+              loading={isPending || isSyncing}
+              pendingLabel="Synchronizing Canvas…"
               disabled={isSyncing}
               onClick={handleSync}
             >

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ServiceWorkerRegistration } from "@/components/notifications/service-worker-registration";
+import { OperationalProvider } from "@/components/pwa/operational-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -54,8 +54,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-background text-foreground antialiased`}
         suppressHydrationWarning
       >
-        {children}
-        <ServiceWorkerRegistration />
+        <OperationalProvider>{children}</OperationalProvider>
       </body>
     </html>
   );

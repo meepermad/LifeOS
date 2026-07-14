@@ -854,6 +854,7 @@ export type Database = {
           unpaid_break_minutes: number
           updated_at: string
           user_id: string
+          work_profile_id: string | null
         }
         Insert: {
           all_day?: boolean
@@ -887,6 +888,7 @@ export type Database = {
           unpaid_break_minutes?: number
           updated_at?: string
           user_id: string
+          work_profile_id?: string | null
         }
         Update: {
           all_day?: boolean
@@ -920,6 +922,7 @@ export type Database = {
           unpaid_break_minutes?: number
           updated_at?: string
           user_id?: string
+          work_profile_id?: string | null
         }
         Relationships: [
           {
@@ -1183,6 +1186,38 @@ export type Database = {
         }
         Relationships: []
       }
+      planning_client_requests: {
+        Row: {
+          client_request_id: string
+          created_at: string
+          id: string
+          proposal_id: string | null
+          user_id: string
+        }
+        Insert: {
+          client_request_id: string
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          user_id: string
+        }
+        Update: {
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          proposal_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_client_requests_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "planning_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_proposals: {
         Row: {
           accepted_at: string | null
@@ -1380,6 +1415,7 @@ export type Database = {
           decision_type: string
           id: string
           session_id: string
+          supersedes_decision_id: string | null
           task_id: string | null
           user_id: string
         }
@@ -1389,6 +1425,7 @@ export type Database = {
           decision_type: string
           id?: string
           session_id: string
+          supersedes_decision_id?: string | null
           task_id?: string | null
           user_id: string
         }
@@ -1398,6 +1435,7 @@ export type Database = {
           decision_type?: string
           id?: string
           session_id?: string
+          supersedes_decision_id?: string | null
           task_id?: string | null
           user_id?: string
         }
@@ -1407,6 +1445,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "review_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_decisions_supersedes_decision_id_fkey"
+            columns: ["supersedes_decision_id"]
+            isOneToOne: false
+            referencedRelation: "review_decisions"
             referencedColumns: ["id"]
           },
           {
@@ -1422,6 +1467,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          current_step: number
           id: string
           review_date: string | null
           review_type: string
@@ -1434,6 +1480,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          current_step?: number
           id?: string
           review_date?: string | null
           review_type: string
@@ -1446,6 +1493,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          current_step?: number
           id?: string
           review_date?: string | null
           review_type?: string
@@ -1669,6 +1717,67 @@ export type Database = {
           },
         ]
       }
+      task_due_date_revisions: {
+        Row: {
+          id: string
+          user_id: string
+          task_id: string
+          previous_due_at: string | null
+          new_due_at: string | null
+          reason: string | null
+          source: string
+          review_session_id: string | null
+          assistant_action_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          task_id: string
+          previous_due_at?: string | null
+          new_due_at?: string | null
+          reason?: string | null
+          source: string
+          review_session_id?: string | null
+          assistant_action_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_id?: string
+          previous_due_at?: string | null
+          new_due_at?: string | null
+          reason?: string | null
+          source?: string
+          review_session_id?: string | null
+          assistant_action_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_due_date_revisions_assistant_action_id_fkey"
+            columns: ["assistant_action_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_due_date_revisions_review_session_id_fkey"
+            columns: ["review_session_id"]
+            isOneToOne: false
+            referencedRelation: "review_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_due_date_revisions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_estimate_revisions: {
         Row: {
           created_at: string
@@ -1759,6 +1868,7 @@ export type Database = {
       }
       task_recurrence_templates: {
         Row: {
+          archived_at: string | null
           course_id: string | null
           created_at: string
           default_difficulty: number
@@ -1767,7 +1877,9 @@ export type Database = {
           description: string | null
           due_time: string | null
           end_date: string | null
+          ended_at: string | null
           first_occurrence_date: string
+          future_edit_policy: string | null
           generation_horizon_days: number
           id: string
           is_active: boolean
@@ -1781,6 +1893,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           course_id?: string | null
           created_at?: string
           default_difficulty?: number
@@ -1789,7 +1902,9 @@ export type Database = {
           description?: string | null
           due_time?: string | null
           end_date?: string | null
+          ended_at?: string | null
           first_occurrence_date: string
+          future_edit_policy?: string | null
           generation_horizon_days?: number
           id?: string
           is_active?: boolean
@@ -1803,6 +1918,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           course_id?: string | null
           created_at?: string
           default_difficulty?: number
@@ -1811,7 +1927,9 @@ export type Database = {
           description?: string | null
           due_time?: string | null
           end_date?: string | null
+          ended_at?: string | null
           first_occurrence_date?: string
+          future_edit_policy?: string | null
           generation_horizon_days?: number
           id?: string
           is_active?: boolean
@@ -1919,6 +2037,8 @@ export type Database = {
           external_task_id: string | null
           id: string
           inbox_at: string | null
+          is_manually_customized: boolean
+          manually_detached_from_recurrence: boolean
           minimum_block_minutes: number
           parent_task_id: string | null
           planning_estimate_override: string | null
@@ -1954,6 +2074,8 @@ export type Database = {
           external_task_id?: string | null
           id?: string
           inbox_at?: string | null
+          is_manually_customized?: boolean
+          manually_detached_from_recurrence?: boolean
           minimum_block_minutes?: number
           parent_task_id?: string | null
           planning_estimate_override?: string | null
@@ -1989,6 +2111,8 @@ export type Database = {
           external_task_id?: string | null
           id?: string
           inbox_at?: string | null
+          is_manually_customized?: boolean
+          manually_detached_from_recurrence?: boolean
           minimum_block_minutes?: number
           parent_task_id?: string | null
           planning_estimate_override?: string | null
@@ -2122,6 +2246,7 @@ export type Database = {
           unpaid_break_minutes: number
           updated_at: string
           user_id: string
+          work_profile_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2134,6 +2259,7 @@ export type Database = {
           unpaid_break_minutes?: number
           updated_at?: string
           user_id: string
+          work_profile_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2144,6 +2270,52 @@ export type Database = {
           name?: string
           start_time?: string
           unpaid_break_minutes?: number
+          updated_at?: string
+          user_id?: string
+          work_profile_id?: string | null
+        }
+        Relationships: []
+      }
+      work_profiles: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          default_location: string | null
+          default_unpaid_break_minutes: number
+          display_name: string
+          employer_name: string
+          icon_key: string | null
+          id: string
+          is_active: boolean
+          role_title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          default_location?: string | null
+          default_unpaid_break_minutes?: number
+          display_name: string
+          employer_name: string
+          icon_key?: string | null
+          id?: string
+          is_active?: boolean
+          role_title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          default_location?: string | null
+          default_unpaid_break_minutes?: number
+          display_name?: string
+          employer_name?: string
+          icon_key?: string | null
+          id?: string
+          is_active?: boolean
+          role_title?: string | null
           updated_at?: string
           user_id?: string
         }

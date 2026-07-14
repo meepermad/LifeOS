@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   fetchDeadlineTasks: vi.fn(),
   hasCompletedReviewSession: vi.fn(),
   countWaitingFollowupsDue: vi.fn(),
+  listWaitingFollowupsDue: vi.fn(),
   countOverdueNeedingDecision: vi.fn(),
   countAwaitingPlanningFeedback: vi.fn(),
 }));
@@ -41,6 +42,7 @@ vi.mock("@/lib/notifications/workload-admin", () => ({
 vi.mock("@/lib/notifications/workflow-queries", () => ({
   hasCompletedReviewSession: mocks.hasCompletedReviewSession,
   countWaitingFollowupsDue: mocks.countWaitingFollowupsDue,
+  listWaitingFollowupsDue: mocks.listWaitingFollowupsDue,
   countOverdueNeedingDecision: mocks.countOverdueNeedingDecision,
   countAwaitingPlanningFeedback: mocks.countAwaitingPlanningFeedback,
 }));
@@ -98,6 +100,7 @@ describe("review reminder scheduling", () => {
       invalidCount: 0,
     });
     mocks.hasCompletedReviewSession.mockResolvedValue(false);
+    mocks.listWaitingFollowupsDue.mockResolvedValue([]);
   });
 
   it("builds stable review dedup keys", () => {
@@ -110,8 +113,8 @@ describe("review reminder scheduling", () => {
     expect(buildWeeklyReviewDedupKey("user-1", "2026-07-07")).toBe(
       "weekly_review:user-1:2026-07-07",
     );
-    expect(buildWaitingFollowupDedupKey("user-1", "2026-07-12")).toBe(
-      "waiting_followup:user-1:2026-07-12",
+    expect(buildWaitingFollowupDedupKey("user-1", "task-9", "2026-07-12")).toBe(
+      "waiting_followup:user-1:task-9:2026-07-12",
     );
     expect(buildOverdueDecisionDedupKey("user-1", "2026-07-12")).toBe(
       "overdue_decision:user-1:2026-07-12",

@@ -13,8 +13,7 @@ function buildParsedShiftFromEvent(event: EventWithCalendar): ParsedShift {
   const [endH, endM] = end.time.split(":").map(Number);
   const isOvernight =
     endH < startH || (endH === startH && endM <= startM);
-  const dateKey =
-    event.external_event_id?.replace("work-shift:", "") ?? start.date;
+  const dateKey = start.date;
 
   return {
     dateKey,
@@ -26,6 +25,8 @@ function buildParsedShiftFromEvent(event: EventWithCalendar): ParsedShift {
     note: event.shift_note,
     title: event.title,
     eventId: event.id,
+    workProfileId: event.work_profile_id,
+    externalEventId: event.external_event_id ?? undefined,
     requiresConfirmation: false,
   };
 }
@@ -54,6 +55,8 @@ function buildParsedShiftFromDrop(
     note: event.shift_note,
     title: event.title,
     eventId: event.id,
+    workProfileId: event.work_profile_id,
+    externalEventId: event.external_event_id ?? undefined,
     requiresConfirmation: durationMinutes > 12 * 60,
   };
 }
@@ -76,10 +79,25 @@ export async function moveWorkShiftFromCalendar(
   const profile = await getProfile();
   const weekStartsOn = profile.week_starts_on as 0 | 1;
 
-  const weekBounds = getWeekBounds(new Date(parsed.startAt), weekStartsOn, 0);
+  const sourceWeek = getWeekBounds(new Date(event.start_at), weekStartsOn, 0);
+  const destinationWeek = getWeekBounds(
+    new Date(parsed.startAt),
+    weekStartsOn,
+    0,
+  );
+
+  const rangeStartMs = Math.min(
+    sourceWeek.start.getTime(),
+    destinationWeek.start.getTime(),
+  );
+  const rangeEndMs = Math.max(
+    sourceWeek.end.getTime(),
+    destinationWeek.end.getTime(),
+  );
+
   const existingShifts = await listWorkShiftsInRange(
-    weekBounds.start.toISOString(),
-    weekBounds.end.toISOString(),
+    new Date(rangeStartMs).toISOString(),
+    new Date(rangeEndMs).toISOString(),
   );
 
   const draftShifts = buildWorkShiftDraftForMove(event, parsed, existingShifts);

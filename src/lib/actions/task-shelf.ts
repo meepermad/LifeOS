@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertNoBlockingOverlap } from "@/lib/data/events";
-import { createShelfPlanningProposal } from "@/lib/data/planning";
+import {
+  createShelfPlanningProposal,
+  getTaskFocusScheduleSummaries,
+} from "@/lib/data/planning";
 import { getTaskById } from "@/lib/data/tasks";
 import { isActionableWorkload } from "@/lib/tasks/triage";
 import { AppError, ConflictError } from "@/lib/errors/app-error";
@@ -13,6 +16,7 @@ const scheduleFromShelfSchema = z.object({
   taskId: z.string().uuid(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
+  clientRequestId: z.string().min(1).max(128).optional(),
 });
 
 function toActionError<T = void>(error: unknown): ActionResult<T> {
@@ -38,7 +42,13 @@ function toActionError<T = void>(error: unknown): ActionResult<T> {
 
 export async function scheduleTaskFromShelfAction(
   input: unknown,
-): Promise<ActionResult<{ proposalId: string; planningRunId: string }>> {
+): Promise<
+  ActionResult<{
+    proposalId: string;
+    planningRunId: string;
+    idempotent?: boolean;
+  }>
+> {
   try {
     const parsed = scheduleFromShelfSchema.parse(input);
     const task = await getTaskById(parsed.taskId);
@@ -53,12 +63,24 @@ export async function scheduleTaskFromShelfAction(
       throw new ConflictError("End time must be after start time");
     }
 
-    if (task.earliest_start_at && startMs < new Date(task.earliest_start_at).getTime()) {
-      throw new ConflictError("This task cannot start before its earliest start time");
+    if (
+      task.earliest_start_at &&
+      startMs < new Date(task.earliest_start_at).getTime()
+    ) {
+      throw new ConflictError(
+        "This task cannot start before its earliest start time",
+      );
     }
 
     if (task.due_at && endMs > new Date(task.due_at).getTime()) {
       throw new ConflictError("This block would extend past the task deadline");
+    }
+
+    const summaries = await getTaskFocusScheduleSummaries([task]);
+    const remaining =
+      summaries.get(task.id)?.unscheduledRemainingMinutes ?? 0;
+    if (remaining <= 0) {
+      throw new ConflictError("This task has no remaining unscheduled work");
     }
 
     await assertNoBlockingOverlap(parsed.startAt, parsed.endAt);
@@ -67,6 +89,7 @@ export async function scheduleTaskFromShelfAction(
       taskId: parsed.taskId,
       proposedStartAt: parsed.startAt,
       proposedEndAt: parsed.endAt,
+      clientRequestId: parsed.clientRequestId,
     });
 
     revalidatePath("/calendar");
@@ -81,9 +104,15 @@ export async function scheduleTaskFromShelfAction(
 }
 
 export async function listShelfTasksAction(
-  filter: Parameters<typeof import("@/lib/planning/task-shelf").getShelfEligibleTasks>[0] = {},
+  filter: Parameters<
+    typeof import("@/lib/planning/task-shelf").getShelfEligibleTasks
+  >[0] = {},
 ): Promise<
-  ActionResult<Awaited<ReturnType<typeof import("@/lib/planning/task-shelf").getShelfEligibleTasks>>>
+  ActionResult<
+    Awaited<
+      ReturnType<typeof import("@/lib/planning/task-shelf").getShelfEligibleTasks>
+    >
+  >
 > {
   try {
     const { getShelfEligibleTasks } = await import("@/lib/planning/task-shelf");

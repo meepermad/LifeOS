@@ -47,7 +47,11 @@ export function toCalendarRenderEvent(
   };
 
   const timePrefix = event.all_day ? "" : `${formatAppTime(event.start_at)} `;
-  const title = `${style.icon} ${timePrefix}${event.title}`;
+  const displayTitle =
+    durationMinutes < 45 && event.event_type === "work"
+      ? event.title.split("—")[0]?.trim() || event.title
+      : event.title;
+  const title = `${style.icon} ${timePrefix}${displayTitle}`;
 
   const isDeadlineMarker =
     event.event_type === "deadline" || (event.all_day && event.event_type === "deadline");

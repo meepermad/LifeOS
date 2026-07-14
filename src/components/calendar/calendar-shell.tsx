@@ -217,6 +217,7 @@ export function CalendarShell({
         taskId,
         startAt: info.event.start!.toISOString(),
         endAt: info.event.end!.toISOString(),
+        clientRequestId: crypto.randomUUID(),
       });
 
       if (!result.success) {

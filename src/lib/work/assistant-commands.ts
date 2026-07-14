@@ -1,7 +1,7 @@
 import type { ParsedCommand } from "@/lib/assistant/intents";
 import { getProfile } from "@/lib/data/bootstrap";
 import { listEventsInRange } from "@/lib/data/events";
-import { eventToShiftDayDraft } from "@/lib/data/work-shifts";
+import { eventToShiftSlotDraft } from "@/lib/data/work-shifts";
 import {
   applyWorkShiftReconciliation,
   cancelWorkShiftByDate,
@@ -10,7 +10,7 @@ import {
 import { getWeekBounds } from "@/lib/dates/timezone";
 import { addAppDays } from "@/lib/dates/timezone";
 import { formatAppDate, formatAppTimeRange } from "@/lib/dates/timezone";
-import type { ShiftDayDraft } from "@/lib/work/shift-draft";
+import type { ShiftSlotDraft } from "@/lib/work/shift-draft";
 import { detectShiftConflicts } from "@/lib/work/shift-conflicts";
 import { reconcileWeeklyShifts } from "@/lib/work/shift-reconciliation";
 import { formatShiftPreviewList } from "@/lib/work/shift-preview";
@@ -22,10 +22,10 @@ import {
 
 export function commandToShiftDraft(
   command: Extract<ParsedCommand, { intent: "add_work_shift" }>,
-): ShiftDayDraft {
+): ShiftSlotDraft {
   return {
+    clientId: crypto.randomUUID(),
     dateKey: command.dateKey,
-    isOff: false,
     startTime: command.startTime ?? "",
     endTime: command.endTime ?? "",
     unpaidBreakMinutes: 0,
@@ -36,27 +36,19 @@ export function commandToShiftDraft(
 
 export function commandsToWeeklyDraft(
   shifts: Extract<ParsedCommand, { intent: "set_work_schedule" }>["shifts"],
-): ShiftDayDraft[] {
+): ShiftSlotDraft[] {
   return shifts.map((shift) =>
-    shift.isOff
-      ? {
+    {
+      return {
+          clientId: crypto.randomUUID(),
           dateKey: shift.dateKey,
-          isOff: true,
-          startTime: "",
-          endTime: "",
+          startTime: shift.isOff ? "" : shift.startTime ?? "",
+          endTime: shift.isOff ? "" : shift.endTime ?? "",
           unpaidBreakMinutes: 0,
           location: "",
           note: "",
-        }
-      : {
-          dateKey: shift.dateKey,
-          isOff: false,
-          startTime: shift.startTime ?? "",
-          endTime: shift.endTime ?? "",
-          unpaidBreakMinutes: 0,
-          location: "",
-          note: "",
-        },
+      };
+    },
   );
 }
 
@@ -85,8 +77,8 @@ export async function buildShiftsFromCommand(
   if (command.intent === "update_work_shift" && command.startTime && command.endTime) {
     const result = parseShiftDay(
       {
+        clientId: crypto.randomUUID(),
         dateKey: command.targetDateKey ?? command.sourceDateKey,
-        isOff: false,
         startTime: command.startTime,
         endTime: command.endTime,
         unpaidBreakMinutes: 0,
@@ -170,11 +162,11 @@ export async function previewWorkCommand(command: ParsedCommand) {
       bounds.start.toISOString(),
       bounds.end.toISOString(),
     );
-    const event = existing.find(
-      (s) =>
-        s.external_event_id === `work-shift:${command.dateKey}` ||
-        s.start_at.startsWith(command.dateKey),
-    );
+    const matches = existing.filter((s) => s.start_at.startsWith(command.dateKey));
+    if (matches.length > 1) {
+      throw new Error("More than one shift exists on that date. Please specify which shift.");
+    }
+    const event = matches[0];
     return {
       content: `Remove work shift on ${formatAppDate(`${command.dateKey}T12:00:00Z`)}.`,
       shifts: [] as ParsedShift[],
@@ -194,17 +186,17 @@ export async function previewWorkCommand(command: ParsedCommand) {
       sourceBounds.start.toISOString(),
       sourceBounds.end.toISOString(),
     );
-    const source = existing.find(
-      (s) =>
-        s.external_event_id === `work-shift:${command.sourceDateKey}` ||
-        s.start_at.startsWith(command.sourceDateKey),
-    );
+    const matches = existing.filter((s) => s.start_at.startsWith(command.sourceDateKey));
+    if (matches.length > 1) {
+      throw new Error("More than one shift exists on that date. Please specify which shift.");
+    }
+    const source = matches[0];
     if (!source) {
       throw new Error("Could not find the shift to move.");
     }
-    const draft = eventToShiftDayDraft(source);
+    const draft = eventToShiftSlotDraft(source);
     const result = parseShiftDay(
-      { ...draft, dateKey: command.targetDateKey, eventId: undefined },
+      { ...draft, dateKey: command.targetDateKey },
       profile.timezone,
     );
     if (!result.shift) {
@@ -214,8 +206,7 @@ export async function previewWorkCommand(command: ParsedCommand) {
       content: `Move shift from ${command.sourceDateKey} to ${command.targetDateKey}.`,
       shifts: [result.shift],
       items: [
-        { dateKey: command.sourceDateKey, action: "removed" as const, eventId: source.id },
-        { dateKey: command.targetDateKey, action: "created" as const, shift: result.shift },
+        { dateKey: command.targetDateKey, action: "updated" as const, eventId: source.id, shift: result.shift },
       ],
     };
   }
@@ -235,10 +226,10 @@ export async function previewWorkCommand(command: ParsedCommand) {
     const shifts: ParsedShift[] = [];
 
     for (const event of sourceShifts) {
-      const draft = eventToShiftDayDraft(event);
+      const draft = eventToShiftSlotDraft(event);
       const targetDateKey = addAppDays(draft.dateKey, dayOffset);
       const result = parseShiftDay(
-        { ...draft, dateKey: targetDateKey, eventId: undefined },
+        { ...draft, dateKey: targetDateKey, eventId: undefined, externalEventId: undefined },
         profile.timezone,
       );
       if (result.shift) shifts.push(result.shift);

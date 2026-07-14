@@ -1,3 +1,13 @@
+export type FutureEditPolicy =
+  | "leave_unchanged"
+  | "update_future_incomplete"
+  | "cancel_and_regenerate";
+
+export type RecurrenceEditScope =
+  | "this_occurrence"
+  | "this_and_future"
+  | "template_only";
+
 export type RecurrenceFrequency =
   | "daily"
   | "weekdays"
@@ -45,6 +55,9 @@ export type RecurrenceTemplate = {
   occurrence_limit: number | null;
   is_active: boolean;
   paused_at: string | null;
+  archived_at: string | null;
+  ended_at: string | null;
+  future_edit_policy: FutureEditPolicy | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,3 +77,6 @@ export type OccurrenceDate = {
   scheduledDate: string;
   originalDate: string;
 };
+
+export const MONTH_END_CLAMP_NOTICE =
+  "A task scheduled for the 31st will occur on the final day of months with fewer than 31 days.";

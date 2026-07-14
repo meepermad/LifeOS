@@ -10,6 +10,7 @@ function makeEvent(overrides: Partial<EventWithCalendar>): EventWithCalendar {
     calendar_id: "cal-work",
     class_meeting_id: null,
     external_event_id: "work-shift:2026-07-13",
+    work_profile_id: null,
     title: "Work",
     description: null,
     location: null,
@@ -51,6 +52,7 @@ const baseShift: ParsedShift = {
   location: null,
   note: null,
   title: "Work",
+  externalEventId: "work-shift:2026-07-13",
   requiresConfirmation: false,
 };
 
@@ -71,6 +73,32 @@ describe("reconcileWeeklyShifts", () => {
       removeOmitted: false,
     });
     expect(result.items[0]?.action).toBe("created");
+  });
+
+  it("does not overwrite a second shift on the same day", () => {
+    const first = makeEvent({ id: "evt-1", external_event_id: "work-shift:first" });
+    const second = makeEvent({
+      id: "evt-2",
+      external_event_id: "work-shift:second",
+      start_at: "2026-07-13T23:00:00.000Z",
+      end_at: "2026-07-14T02:00:00.000Z",
+    });
+    const result = reconcileWeeklyShifts({
+      draftShifts: [
+        { ...baseShift, eventId: "evt-1", externalEventId: "work-shift:first" },
+        {
+          ...baseShift,
+          eventId: "evt-2",
+          externalEventId: "work-shift:second",
+          startAt: second.start_at,
+          endAt: second.end_at,
+        },
+      ],
+      existingShifts: [first, second],
+      removeOmitted: false,
+    });
+    expect(result.items.map((item) => item.eventId)).toEqual(["evt-1", "evt-2"]);
+    expect(result.items.every((item) => item.action === "unchanged")).toBe(true);
   });
 
   it("reports omitted shifts without removing by default", () => {

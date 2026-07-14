@@ -7,6 +7,7 @@ import {
   completeReviewSessionAction,
   saveWeeklyPrioritiesAction,
   startReviewSessionAction,
+  updateSessionStepAction,
 } from "@/lib/actions/reviews";
 import { formatAppDate } from "@/lib/dates/timezone";
 import { buildWeeklyInsights } from "@/lib/reviews/insights";
@@ -25,6 +26,11 @@ import {
 } from "@/components/forms/ui";
 import { EventListItem } from "@/components/events/event-list";
 
+function clampStep(index: number, length: number): number {
+  if (!Number.isFinite(index) || index < 0) return 0;
+  return Math.min(Math.floor(index), length - 1);
+}
+
 export function WeeklyReviewStepper({
   context,
   weekOffset = 0,
@@ -35,7 +41,9 @@ export function WeeklyReviewStepper({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(
+    clampStep(context.session?.current_step ?? 0, WEEKLY_REVIEW_STEPS.length),
+  );
   const [sessionId, setSessionId] = useState<string | null>(
     context.session?.id ?? context.completedSession?.id ?? null,
   );
@@ -76,6 +84,13 @@ export function WeeklyReviewStepper({
       }
     });
   }, [context.weekStartDate, isComplete, sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || isComplete) return;
+    startTransition(async () => {
+      await updateSessionStepAction({ sessionId, step: stepIndex });
+    });
+  }, [sessionId, stepIndex, isComplete]);
 
   function goNext() {
     setStepIndex((index) =>
@@ -156,7 +171,7 @@ export function WeeklyReviewStepper({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">
@@ -166,20 +181,24 @@ export function WeeklyReviewStepper({
             {currentStep?.label}
           </h2>
         </div>
-        <div className="flex gap-1">
+        <ol className="flex gap-1" aria-label="Review progress">
           {WEEKLY_REVIEW_STEPS.map((step, index) => (
-            <span
-              key={step.id}
-              className={`h-2 w-2 rounded-full ${
-                index <= stepIndex ? "bg-accent" : "bg-border"
-              }`}
-              aria-hidden="true"
-            />
+            <li key={step.id}>
+              <span
+                className={`block h-2 w-2 rounded-full ${
+                  index <= stepIndex ? "bg-accent" : "bg-border"
+                }`}
+                aria-current={index === stepIndex ? "step" : undefined}
+                aria-label={`${step.label}${index === stepIndex ? ", current" : ""}`}
+              />
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
 
-      <ReviewInsightsCard insights={insights} />
+      {currentStep?.id === "confirm" && (
+        <ReviewInsightsCard insights={insights} />
+      )}
 
       {currentStep?.id === "timing" && (
         <SectionCard title="Timing data">
@@ -206,7 +225,7 @@ export function WeeklyReviewStepper({
                 <li key={task.id}>
                   <Link
                     href={`/tasks/${task.id}/edit`}
-                    className="text-sm text-foreground hover:text-accent"
+                    className="block truncate text-sm text-foreground hover:text-accent"
                   >
                     {task.title}
                   </Link>
@@ -232,7 +251,7 @@ export function WeeklyReviewStepper({
                 <li key={task.id}>
                   <Link
                     href={`/tasks/${task.id}/edit`}
-                    className="text-sm text-foreground hover:text-accent"
+                    className="block truncate text-sm text-foreground hover:text-accent"
                   >
                     {task.title}
                   </Link>
@@ -253,7 +272,7 @@ export function WeeklyReviewStepper({
                 <li key={task.id}>
                   <Link
                     href={`/tasks/${task.id}/edit`}
-                    className="text-sm text-foreground hover:text-accent"
+                    className="block truncate text-sm text-foreground hover:text-accent"
                   >
                     {task.title}
                   </Link>
@@ -320,7 +339,7 @@ export function WeeklyReviewStepper({
                 <li key={task.id}>
                   <Link
                     href={`/tasks/${task.id}/edit`}
-                    className="text-sm text-foreground hover:text-accent"
+                    className="block truncate text-sm text-foreground hover:text-accent"
                   >
                     {task.title}
                   </Link>
@@ -344,14 +363,14 @@ export function WeeklyReviewStepper({
                 const selected = selectedPriorityIds.includes(task.id);
                 return (
                   <li key={task.id}>
-                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 hover:border-accent">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2.5 hover:border-accent">
                       <input
                         type="checkbox"
                         checked={selected}
                         onChange={() => togglePriority(task.id)}
-                        className="h-4 w-4 rounded border-border text-accent"
+                        className="h-4 w-4 shrink-0 rounded border-border text-accent"
                       />
-                      <span className="text-sm text-foreground">
+                      <span className="truncate text-sm text-foreground">
                         {task.title}
                       </span>
                     </label>
@@ -391,25 +410,27 @@ export function WeeklyReviewStepper({
         </p>
       )}
 
-      <div className="flex gap-3">
-        {stepIndex > 0 && (
-          <SecondaryButton disabled={isPending} onClick={goBack}>
-            Back
-          </SecondaryButton>
-        )}
-        {currentStep?.id === "priorities" ? (
-          <PrimaryButton loading={isPending} onClick={handleSavePriorities}>
-            Save priorities
-          </PrimaryButton>
-        ) : stepIndex < WEEKLY_REVIEW_STEPS.length - 1 ? (
-          <PrimaryButton disabled={isPending} onClick={goNext}>
-            Continue
-          </PrimaryButton>
-        ) : (
-          <PrimaryButton loading={isPending} onClick={handleComplete}>
-            Complete review
-          </PrimaryButton>
-        )}
+      <div className="safe-bottom fixed inset-x-0 bottom-16 z-40 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur-md lg:bottom-0 lg:left-56">
+        <div className="mx-auto flex max-w-lg gap-3 lg:max-w-6xl">
+          {stepIndex > 0 && (
+            <SecondaryButton disabled={isPending} onClick={goBack}>
+              Back
+            </SecondaryButton>
+          )}
+          {currentStep?.id === "priorities" ? (
+            <PrimaryButton loading={isPending} onClick={handleSavePriorities}>
+              Save priorities
+            </PrimaryButton>
+          ) : stepIndex < WEEKLY_REVIEW_STEPS.length - 1 ? (
+            <PrimaryButton disabled={isPending} onClick={goNext}>
+              Continue
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton loading={isPending} onClick={handleComplete}>
+              Complete review
+            </PrimaryButton>
+          )}
+        </div>
       </div>
     </div>
   );

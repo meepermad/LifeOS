@@ -27,6 +27,7 @@ export async function createWorkShiftTemplate(input: {
   unpaidBreakMinutes?: number;
   location?: string;
   label?: string;
+  workProfileId?: string | null;
 }): Promise<WorkShiftTemplateRow> {
   const user = await requireAllowedUser();
   const supabase = await createClient();
@@ -41,6 +42,7 @@ export async function createWorkShiftTemplate(input: {
       unpaid_break_minutes: input.unpaidBreakMinutes ?? 0,
       location: input.location?.trim() || null,
       label: input.label?.trim() || null,
+      work_profile_id: input.workProfileId ?? null,
     })
     .select("*")
     .single();
@@ -61,6 +63,7 @@ export async function updateWorkShiftTemplate(
     unpaidBreakMinutes?: number;
     location?: string;
     label?: string;
+    workProfileId?: string | null;
   },
 ): Promise<WorkShiftTemplateRow> {
   const user = await requireAllowedUser();
@@ -75,6 +78,7 @@ export async function updateWorkShiftTemplate(
       unpaid_break_minutes: input.unpaidBreakMinutes ?? 0,
       location: input.location?.trim() || null,
       label: input.label?.trim() || null,
+      work_profile_id: input.workProfileId ?? null,
     })
     .eq("id", templateId)
     .eq("user_id", user.id)

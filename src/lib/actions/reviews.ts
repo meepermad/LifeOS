@@ -8,7 +8,9 @@ import {
   saveDailyPriorities,
   saveWeeklyPriorities,
   startReviewSession,
+  updateSessionStep,
 } from "@/lib/data/reviews";
+import { applyReviewDecision } from "@/lib/reviews/apply-decision";
 import { AppError } from "@/lib/errors/app-error";
 import type { Json } from "@/types/database.types";
 import type { ActionResult } from "@/lib/actions/tasks";
@@ -17,6 +19,7 @@ import type {
   ReviewDecisionType,
   ReviewType,
 } from "@/lib/reviews/types";
+import type { ApplyReviewDecisionInput } from "@/lib/reviews/apply-decision";
 
 function toActionError<T = void>(error: unknown): ActionResult<T> {
   if (error instanceof ZodError) {
@@ -93,6 +96,18 @@ export async function recordReviewDecisionAction(input: {
   }
 }
 
+export async function applyReviewDecisionAction(
+  input: ApplyReviewDecisionInput,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const decision = await applyReviewDecision(input);
+    revalidateReviewPaths();
+    return { success: true, data: { id: decision.id } };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
 export async function saveDailyPrioritiesAction(input: {
   priorityDate: string;
   priorities: Array<{
@@ -117,6 +132,18 @@ export async function saveWeeklyPrioritiesAction(input: {
   try {
     await saveWeeklyPriorities(input);
     revalidateReviewPaths();
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateSessionStepAction(input: {
+  sessionId: string;
+  step: number;
+}): Promise<ActionResult> {
+  try {
+    await updateSessionStep(input.sessionId, input.step);
     return { success: true };
   } catch (error) {
     return toActionError(error);

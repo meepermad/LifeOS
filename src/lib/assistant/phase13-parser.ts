@@ -99,6 +99,19 @@ export function parsePhase13Commands(text: string, now: Date): ParseResult {
     };
   }
 
+  if (
+    /\bmove\b.+\bunfinished\b.+\btomorrow\b/i.test(lower) ||
+    /\bunfinished\b.+\bto\s+tomorrow\b/i.test(lower)
+  ) {
+    return {
+      kind: "command",
+      command: {
+        intent: "preview_rollover",
+        targetDateKey: getAppLocalDateKey(now),
+      },
+    };
+  }
+
   if (/\b(defer|snooze)\b/.test(lower)) {
     const titleMatch = text.match(
       /\b(?:defer|snooze)\s+(?:the\s+)?(.+?)(?:\s+until|\s+to|\s+till|$)/i,

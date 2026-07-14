@@ -1067,10 +1067,10 @@ export async function buildWritePreview(
     case "preview_rollover": {
       const preview = await previewUnfinishedRollover(command.targetDateKey);
       const lines = [
-        `Rollover preview for ${preview.sourceDateKey}: ${preview.previews.length} task${preview.previews.length === 1 ? "" : "s"} with unscheduled work.`,
+        `Rollover preview for ${preview.sourceDateKey}: ${preview.previews.length} unfinished task${preview.previews.length === 1 ? "" : "s"} (${preview.mode === "change_deadline" ? "change deadline" : "schedule work; keep deadline"}).`,
         ...preview.previews.map(
           (item) =>
-            `• ${item.title}: ${item.remainingMinutes ?? "?"} min → ${item.suggestedDateKey}`,
+            `• ${item.title}: ${item.remainingMinutes || "?"} min → ${item.suggestedDateKey} (${item.effect})`,
         ),
       ];
       return {

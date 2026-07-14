@@ -1,6 +1,10 @@
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
-import { parse } from "date-fns";
 import { APP_TIMEZONE } from "@/lib/constants";
+import {
+  getAppLocalDateKey,
+  getWeekBounds,
+  toUtcFromAppLocalDate,
+} from "@/lib/dates/timezone";
 import {
   findDeliveryByKey,
   isDeliveryComplete,
@@ -27,13 +31,12 @@ import {
 import {
   countAwaitingPlanningFeedback,
   countOverdueNeedingDecision,
-  countWaitingFollowupsDue,
+  listWaitingFollowupsDue,
   hasCompletedReviewSession,
 } from "@/lib/notifications/workflow-queries";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { PlanningPreferencesRow } from "@/types/domain";
-import { getAppLocalDateKey } from "@/lib/dates/timezone";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -98,9 +101,10 @@ export function buildWeeklyReviewDedupKey(
 
 export function buildWaitingFollowupDedupKey(
   userId: string,
-  dateKey: string,
+  taskId: string,
+  followUpDateKey: string,
 ): string {
-  return `waiting_followup:${userId}:${dateKey}`;
+  return `waiting_followup:${userId}:${taskId}:${followUpDateKey}`;
 }
 
 export function buildOverdueDecisionDedupKey(
@@ -178,12 +182,9 @@ function getWeekStartKey(
   dateKey: string,
   weekStartsOn: 0 | 1,
 ): string {
-  const date = parse(dateKey, "yyyy-MM-dd", new Date());
-  const day = date.getDay();
-  const diff = (day - weekStartsOn + 7) % 7;
-  const weekStart = new Date(date);
-  weekStart.setDate(date.getDate() - diff);
-  return formatInTimeZone(weekStart, APP_TIMEZONE, "yyyy-MM-dd");
+  const dayStart = toUtcFromAppLocalDate(dateKey);
+  const { start } = getWeekBounds(dayStart, weekStartsOn, 0);
+  return getAppLocalDateKey(start);
 }
 
 export type ProcessResult = {
@@ -528,25 +529,33 @@ export async function processScheduledNotifications(
   });
 
   if (preferences.waiting_followup_enabled) {
-    const dedupKey = buildWaitingFollowupDedupKey(userId, dateKey);
-    const existing = await findDeliveryByKey(client, dedupKey);
+    const dueTasks = await listWaitingFollowupsDue(client, userId, now);
+    for (const task of dueTasks) {
+      if (!task.waiting_follow_up_at) continue;
+      const followUpDateKey = getAppLocalDateKey(task.waiting_follow_up_at);
+      const dedupKey = buildWaitingFollowupDedupKey(
+        userId,
+        task.id,
+        followUpDateKey,
+      );
+      const existing = await findDeliveryByKey(client, dedupKey);
 
-    if (!existing || !isDeliveryComplete(existing.status)) {
-      const taskCount = await countWaitingFollowupsDue(client, userId, now);
-      if (taskCount > 0) {
-        const payload = buildWaitingFollowupPayload(taskCount, privacyMode);
-        const sendResult = await sendNotificationToUser(client, {
-          userId,
-          notificationType: "waiting_followup",
-          payload,
-          deduplicationKey: dedupKey,
-          scheduledFor,
-          payloadSummary: { taskCount },
-        });
-        if (sendResult.successCount > 0) result.waitingFollowup += 1;
-        else if (sendResult.subscriptionCount === 0) result.skipped += 1;
-        else result.errors += 1;
+      if (existing && isDeliveryComplete(existing.status)) {
+        continue;
       }
+
+      const payload = buildWaitingFollowupPayload(1, privacyMode);
+      const sendResult = await sendNotificationToUser(client, {
+        userId,
+        notificationType: "waiting_followup",
+        payload,
+        deduplicationKey: dedupKey,
+        scheduledFor,
+        payloadSummary: { taskCount: 1 },
+      });
+      if (sendResult.successCount > 0) result.waitingFollowup += 1;
+      else if (sendResult.subscriptionCount === 0) result.skipped += 1;
+      else result.errors += 1;
     }
   }
 

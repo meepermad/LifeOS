@@ -9,6 +9,7 @@ import type { ParsedShift } from "@/lib/work/shift-validation";
 import { splitDateTimeForForm } from "@/lib/dates/timezone";
 import { buildShiftExternalId } from "@/lib/work/shift-reconciliation";
 import type { ShiftReconciliationItem } from "@/lib/work/shift-reconciliation";
+import type { ShiftSlotDraft } from "@/lib/work/shift-draft";
 
 export async function listWorkShiftsInRange(
   start: string,
@@ -33,7 +34,7 @@ async function upsertWorkShift(
 ): Promise<EventRow> {
   const user = await requireAllowedUser();
   const supabase = await createClient();
-  const externalEventId = buildShiftExternalId(shift.dateKey);
+  const externalEventId = buildShiftExternalId(shift.externalEventId);
 
   const payload = {
     user_id: user.id,
@@ -52,6 +53,7 @@ async function upsertWorkShift(
     is_read_only: false,
     blocks_time: true,
     unpaid_break_minutes: shift.unpaidBreakMinutes,
+    work_profile_id: shift.workProfileId ?? null,
     created_by_assistant: options?.createdByAssistant ?? false,
     assistant_action_id: options?.assistantActionId ?? null,
   };
@@ -165,43 +167,96 @@ export async function cancelWorkShiftByDate(dateKey: string): Promise<boolean> {
 
   const user = await requireAllowedUser();
   const supabase = await createClient();
-  const externalEventId = buildShiftExternalId(dateKey);
-
   const { data } = await supabase
     .from("events")
     .select("id")
     .eq("calendar_id", workCalendar.id)
-    .eq("external_event_id", externalEventId)
     .eq("user_id", user.id)
     .neq("status", "cancelled")
-    .maybeSingle();
+    .gte("start_at", `${dateKey}T00:00:00.000Z`)
+    .lt("start_at", `${dateKey}T23:59:59.999Z`)
+    .limit(2);
 
-  if (!data) return false;
-  await cancelWorkShift(data.id);
+  if (!data?.length) return false;
+  if (data.length > 1) {
+    throw new ConflictError("More than one shift exists on that date. Please specify which shift.");
+  }
+  await cancelWorkShift(data[0]!.id);
   return true;
 }
 
-export function eventToShiftDayDraft(event: EventWithCalendar): {
-  dateKey: string;
-  isOff: false;
-  startTime: string;
-  endTime: string;
-  unpaidBreakMinutes: number;
-  location: string;
-  note: string;
-  eventId: string;
-} {
+export function eventToShiftSlotDraft(event: EventWithCalendar): ShiftSlotDraft {
   const start = splitDateTimeForForm(event.start_at);
   const end = splitDateTimeForForm(event.end_at);
   return {
-    dateKey:
-      event.external_event_id?.replace("work-shift:", "") ?? start.date,
-    isOff: false,
+    clientId: crypto.randomUUID(),
+    dateKey: start.date,
     startTime: start.time,
     endTime: end.time,
     unpaidBreakMinutes: event.unpaid_break_minutes ?? 0,
     location: event.location ?? "",
     note: event.shift_note ?? "",
     eventId: event.id,
+    workProfileId: event.work_profile_id,
+    externalEventId: event.external_event_id ?? undefined,
+    displayTitle: event.title,
   };
+}
+
+/** @deprecated Use `eventToShiftSlotDraft`. */
+export const eventToShiftDayDraft = eventToShiftSlotDraft;
+
+export async function listUnassignedWorkShifts(): Promise<EventWithCalendar[]> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const workCalendar = await getWorkCalendar();
+  if (!workCalendar) return [];
+  const { data, error } = await supabase
+    .from("events")
+    .select("*, calendars!inner(name, source)")
+    .eq("user_id", user.id)
+    .eq("calendar_id", workCalendar.id)
+    .eq("event_type", "work")
+    .neq("status", "cancelled")
+    .is("work_profile_id", null);
+  if (error) throw new DatabaseError("Failed to load unassigned work shifts");
+  return (data ?? []).map((event) => ({
+    ...event,
+    calendar_name: event.calendars.name,
+    calendar_source: event.calendars.source,
+  }));
+}
+
+export async function countUnassignedWorkShifts(): Promise<number> {
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const workCalendar = await getWorkCalendar();
+  if (!workCalendar) return 0;
+  const { count, error } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("calendar_id", workCalendar.id)
+    .eq("event_type", "work")
+    .neq("status", "cancelled")
+    .is("work_profile_id", null);
+  if (error) throw new DatabaseError("Failed to count unassigned work shifts");
+  return count ?? 0;
+}
+
+export async function assignWorkProfileToShifts(
+  ids: string[],
+  profileId: string,
+): Promise<number> {
+  if (!ids.length) return 0;
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .update({ work_profile_id: profileId })
+    .eq("user_id", user.id)
+    .in("id", ids)
+    .select("id");
+  if (error) throw new DatabaseError("Failed to assign work profile");
+  return data?.length ?? 0;
 }

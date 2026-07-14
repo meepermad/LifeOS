@@ -1,4 +1,4 @@
-import { DatabaseError } from "@/lib/errors/app-error";
+import { DatabaseError, ValidationError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -15,6 +15,9 @@ import type {
 import type { Json, Database } from "@/types/database.types";
 import type { TaskRow } from "@/types/domain";
 
+const MAX_DAILY_PRIORITIES = 3;
+const MAX_WEEKLY_PRIORITIES = 5;
+
 function mapSession(row: Record<string, unknown>): ReviewSessionRow {
   return {
     id: row.id as string,
@@ -24,6 +27,7 @@ function mapSession(row: Record<string, unknown>): ReviewSessionRow {
     review_week_start: (row.review_week_start as string | null) ?? null,
     started_at: row.started_at as string,
     completed_at: (row.completed_at as string | null) ?? null,
+    current_step: typeof row.current_step === "number" ? row.current_step : 0,
     summary_json: (row.summary_json as Record<string, unknown> | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
@@ -39,8 +43,32 @@ function mapDecision(row: Record<string, unknown>): ReviewDecisionRow {
     decision_type: row.decision_type as ReviewDecisionType,
     decision_payload:
       (row.decision_payload as Record<string, unknown> | null) ?? null,
+    supersedes_decision_id:
+      (row.supersedes_decision_id as string | null) ?? null,
     created_at: row.created_at as string,
   };
+}
+
+function assertUniquePriorityRanks(
+  priorities: Array<{ taskId: string; priorityRank: number }>,
+  max: number,
+): void {
+  if (priorities.length > max) {
+    throw new ValidationError(`At most ${max} priorities allowed`);
+  }
+
+  const taskIds = new Set(priorities.map((priority) => priority.taskId));
+  if (taskIds.size !== priorities.length) {
+    throw new ValidationError("Priority task ids must be unique");
+  }
+
+  const ranks = priorities.map((priority) => priority.priorityRank).sort(
+    (a, b) => a - b,
+  );
+  const expected = Array.from({ length: priorities.length }, (_, index) => index + 1);
+  if (ranks.join(",") !== expected.join(",")) {
+    throw new ValidationError("Priority ranks must be unique and contiguous from 1");
+  }
 }
 
 function mapDailyPriority(row: Record<string, unknown>): DailyPriorityRow {
@@ -187,7 +215,17 @@ export async function startReviewSession(
     .select("*")
     .single();
 
-  if (error || !data) {
+  if (error) {
+    if (error.code === "23505") {
+      const existingAfterConflict = await getInProgressReviewSession(input);
+      if (existingAfterConflict) {
+        return { session: existingAfterConflict, created: false };
+      }
+    }
+    throw new DatabaseError("Failed to start review session");
+  }
+
+  if (!data) {
     throw new DatabaseError("Failed to start review session");
   }
 
@@ -195,6 +233,34 @@ export async function startReviewSession(
     session: mapSession(data as Record<string, unknown>),
     created: true,
   };
+}
+
+export async function updateSessionStep(
+  sessionId: string,
+  step: number,
+): Promise<ReviewSessionRow> {
+  if (!Number.isInteger(step) || step < 0) {
+    throw new ValidationError("Step must be a non-negative integer");
+  }
+
+  const user = await requireAllowedUser();
+  const supabase = await createClient();
+
+  await getReviewSessionById(sessionId);
+
+  const { data, error } = await supabase
+    .from("review_sessions")
+    .update({ current_step: step })
+    .eq("id", sessionId)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new DatabaseError("Failed to update review session step");
+  }
+
+  return mapSession(data as Record<string, unknown>);
 }
 
 export async function completeReviewSession(
@@ -384,6 +450,8 @@ export async function saveDailyPriorities(input: {
     priorityLevel?: PriorityLevel;
   }>;
 }): Promise<DailyPriorityWithTask[]> {
+  assertUniquePriorityRanks(input.priorities, MAX_DAILY_PRIORITIES);
+
   const user = await requireAllowedUser();
   const supabase = await createClient();
 
@@ -445,6 +513,8 @@ export async function saveWeeklyPriorities(input: {
   weekStartDate: string;
   priorities: Array<{ taskId: string; priorityRank: number }>;
 }): Promise<WeeklyPriorityWithTask[]> {
+  assertUniquePriorityRanks(input.priorities, MAX_WEEKLY_PRIORITIES);
+
   const user = await requireAllowedUser();
   const supabase = await createClient();
 

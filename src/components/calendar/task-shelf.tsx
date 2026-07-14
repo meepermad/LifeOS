@@ -81,6 +81,7 @@ export function TaskShelf({ initialTasks, onProposalCreated }: TaskShelfProps) {
         taskId: task.task.id,
         startAt: defaultStart.toISOString(),
         endAt: end.toISOString(),
+        clientRequestId: crypto.randomUUID(),
       });
       if (result.success) {
         setMessage(`Created proposal for “${task.task.title}”. Accept it from Today or Week.`);

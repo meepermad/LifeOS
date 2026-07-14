@@ -13,6 +13,7 @@ export type PriorityLevel = "primary" | "secondary" | "not_today";
 export type ReviewDecisionType =
   | "keep_due_date"
   | "move_due_date"
+  | "change_deadline"
   | "schedule_tomorrow"
   | "return_to_inbox"
   | "split_task"
@@ -31,6 +32,7 @@ export type ReviewSessionRow = {
   review_week_start: string | null;
   started_at: string;
   completed_at: string | null;
+  current_step: number;
   summary_json: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -43,6 +45,7 @@ export type ReviewDecisionRow = {
   task_id: string | null;
   decision_type: ReviewDecisionType;
   decision_payload: Record<string, unknown> | null;
+  supersedes_decision_id: string | null;
   created_at: string;
 };
 

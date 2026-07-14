@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { openSearchPalette } from "@/components/search/command-palette-provider";
 
 const PRIMARY_NAV = [
   { href: "/today", label: "Today", icon: "☀" },
@@ -20,6 +21,7 @@ const MORE_NAV = [
   { href: "/school", label: "School" },
   { href: "/insights", label: "Insights" },
   { href: "/imports", label: "Imports" },
+  { href: "/status", label: "Status" },
   { href: "/settings", label: "Settings" },
 ] as const;
 
@@ -98,6 +100,18 @@ export function BottomNavigation() {
             </button>
           </div>
           <ul className="grid gap-2">
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false);
+                  openSearchPalette();
+                }}
+                className="block w-full rounded-lg border border-border px-3 py-3 text-left text-sm text-foreground hover:bg-surface-elevated"
+              >
+                Search
+              </button>
+            </li>
             {MORE_NAV.map((item) => (
               <li key={item.href}>
                 <Link

@@ -1,4 +1,9 @@
-import { formatAppDate, getAppLocalDateKey, nowInAppTimezone } from "@/lib/dates/timezone";
+import {
+  addAppDays,
+  formatAppDate,
+  getAppLocalDateKey,
+  nowInAppTimezone,
+} from "@/lib/dates/timezone";
 import { formatMinutes } from "@/lib/planning/summaries";
 import type { FocusBlockProposal, ProposalExplanation } from "@/lib/planning/types";
 
@@ -46,9 +51,8 @@ const REASON_INTROS: Record<string, string> = {
 function relativeDayLabel(dateKey: string, now = nowInAppTimezone()): string {
   const todayKey = getAppLocalDateKey(now);
   if (dateKey === todayKey) return "tonight";
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dateKey === getAppLocalDateKey(tomorrow)) return "tomorrow";
+  const tomorrowKey = addAppDays(todayKey, 1);
+  if (dateKey === tomorrowKey) return "tomorrow";
   return formatAppDate(dateKey, "EEEE");
 }
 

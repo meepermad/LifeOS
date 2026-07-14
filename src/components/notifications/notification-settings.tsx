@@ -296,11 +296,17 @@ export function NotificationSettings({
 
     startTransition(async () => {
       const result = await updateNotificationPreferencesAction(input);
-      if (!result.success) {
-        setError(result.error);
+      if (!result.ok) {
+        setMessage(null);
+        setError(result.message);
         return;
       }
-      setMessage("Notification preferences saved");
+      setError(null);
+      if (result.refreshWarning) {
+        setMessage(result.refreshWarning);
+      } else {
+        setMessage("Notification preferences saved");
+      }
       router.refresh();
     });
   }
@@ -598,10 +604,10 @@ export function NotificationSettings({
           </FormField>
         </div>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && !message && <p className="text-sm text-danger">{error}</p>}
         {message && <p className="text-sm text-accent">{message}</p>}
 
-        <PrimaryButton type="submit" loading={isPending}>
+        <PrimaryButton type="submit" loading={isPending} disabled={isPending}>
           Save notification preferences
         </PrimaryButton>
       </form>

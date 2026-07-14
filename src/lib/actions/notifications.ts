@@ -14,6 +14,10 @@ import {
 import { updateNotificationPreferences } from "@/lib/data/notification-preferences";
 import { buildTestPayload } from "@/lib/notifications/payloads";
 import {
+  logNotificationPreferencesDiagnostic,
+  type UpdateNotificationPreferencesResult,
+} from "@/lib/notifications/preference-result";
+import {
   appErrorToHttpStatus,
   logPushSubscriptionPersistenceError,
 } from "@/lib/notifications/push-subscription-errors";
@@ -25,7 +29,11 @@ import {
   notificationPreferencesSchema,
   type NotificationPreferencesInput,
 } from "@/lib/notifications/schemas";
-import { AppError } from "@/lib/errors/app-error";
+import {
+  AppError,
+  AuthenticationError,
+  ValidationError,
+} from "@/lib/errors/app-error";
 import type { ActionResult } from "@/lib/actions/settings";
 
 export type EnableNotificationsResult =
@@ -213,13 +221,139 @@ export async function sendTestNotificationAction(): Promise<TestNotificationResu
 
 export async function updateNotificationPreferencesAction(
   input: NotificationPreferencesInput,
-): Promise<ActionResult> {
+): Promise<UpdateNotificationPreferencesResult> {
+  let mutationCompleted = false;
+
   try {
-    notificationPreferencesSchema.parse(input);
-    await updateNotificationPreferences(input);
-    revalidatePath("/settings");
-    return { success: true };
+    try {
+      notificationPreferencesSchema.parse(input);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        for (const issue of error.issues) {
+          fieldErrors[issue.path.join(".") || "form"] = issue.message;
+        }
+        logNotificationPreferencesDiagnostic({
+          operation: "update_notification_preferences",
+          stage: "validation",
+          code: "VALIDATION_FAILED",
+          mutationCompleted: false,
+          revalidationCompleted: false,
+        });
+        return {
+          ok: false,
+          code: "VALIDATION_FAILED",
+          message: "LifeOS could not save notification preferences.",
+          fieldErrors,
+        };
+      }
+      throw error;
+    }
+
+    const outcome = await updateNotificationPreferences(input);
+
+    if (outcome.status === "error") {
+      if (outcome.reason === "not_found") {
+        logNotificationPreferencesDiagnostic({
+          operation: "update_notification_preferences",
+          stage: "zero_rows",
+          code: "PREFERENCES_NOT_FOUND",
+          supabaseCode: outcome.supabaseCode,
+          mutationCompleted: false,
+          revalidationCompleted: false,
+        });
+        return {
+          ok: false,
+          code: "PREFERENCES_NOT_FOUND",
+          message: "LifeOS could not find notification preferences for this account.",
+        };
+      }
+
+      logNotificationPreferencesDiagnostic({
+        operation: "update_notification_preferences",
+        stage: "mutation",
+        code: "DATABASE_ERROR",
+        supabaseCode: outcome.supabaseCode,
+        mutationCompleted: false,
+        revalidationCompleted: false,
+      });
+      return {
+        ok: false,
+        code: "DATABASE_ERROR",
+        message: "LifeOS could not save notification preferences.",
+      };
+    }
+
+    mutationCompleted = true;
+
+    try {
+      revalidatePath("/settings");
+    } catch {
+      logNotificationPreferencesDiagnostic({
+        operation: "update_notification_preferences",
+        stage: "revalidation",
+        code: "UNKNOWN_ERROR",
+        mutationCompleted: true,
+        revalidationCompleted: false,
+      });
+      return {
+        ok: true,
+        refreshWarning:
+          "Preferences were saved, but LifeOS could not refresh the page. Reopen Settings to see the latest values.",
+      };
+    }
+
+    logNotificationPreferencesDiagnostic({
+      operation: "update_notification_preferences",
+      stage: "complete",
+      mutationCompleted: true,
+      revalidationCompleted: true,
+    });
+
+    return { ok: true };
   } catch (error) {
-    return toActionError(error);
+    if (error instanceof AuthenticationError) {
+      logNotificationPreferencesDiagnostic({
+        operation: "update_notification_preferences",
+        stage: "auth",
+        code: "UNAUTHENTICATED",
+        mutationCompleted,
+        revalidationCompleted: false,
+      });
+      return {
+        ok: false,
+        code: "UNAUTHENTICATED",
+        message: "Sign in to save notification preferences.",
+      };
+    }
+
+    if (error instanceof ValidationError || error instanceof ZodError) {
+      logNotificationPreferencesDiagnostic({
+        operation: "update_notification_preferences",
+        stage: "validation",
+        code: "VALIDATION_FAILED",
+        mutationCompleted,
+        revalidationCompleted: false,
+      });
+      return {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: "LifeOS could not save notification preferences.",
+      };
+    }
+
+    logNotificationPreferencesDiagnostic({
+      operation: "update_notification_preferences",
+      stage: mutationCompleted ? "revalidation" : "mutation",
+      code: "UNKNOWN_ERROR",
+      mutationCompleted,
+      revalidationCompleted: false,
+    });
+
+    return {
+      ok: false,
+      code: "UNKNOWN_ERROR",
+      message: "LifeOS could not save notification preferences.",
+    };
   }
 }

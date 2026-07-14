@@ -1,18 +1,29 @@
 import { normalizeOptionalTime } from "@/lib/validation/preferences";
 import { notificationPreferencesSchema } from "@/lib/notifications/schemas";
 import type { NotificationPreferencesInput } from "@/lib/notifications/schemas";
-import { DatabaseError } from "@/lib/errors/app-error";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { createClient } from "@/lib/supabase/server";
-import type { PlanningPreferencesRow } from "@/types/domain";
 import type { Database } from "@/types/database.types";
 
 type PreferencesUpdate =
   Database["public"]["Tables"]["planning_preferences"]["Update"];
 
+export type NotificationPreferencesUpdateOutcome =
+  | { status: "updated" }
+  | {
+      status: "error";
+      reason: "not_found" | "database";
+      supabaseCode?: string | null;
+    };
+
+/**
+ * Persist notification preferences for the authenticated user.
+ * Success requires no Supabase error and at least one matching row updated.
+ * Do not treat a null full-row body as failure when the mutation succeeded.
+ */
 export async function updateNotificationPreferences(
   input: NotificationPreferencesInput,
-): Promise<PlanningPreferencesRow> {
+): Promise<NotificationPreferencesUpdateOutcome> {
   const user = await requireAllowedUser();
   const parsed = notificationPreferencesSchema.parse(input);
   const supabase = await createClient();
@@ -59,22 +70,31 @@ export async function updateNotificationPreferences(
             parsed.planningFeedbackReminderEnabled,
         }
       : {}),
-  } as PreferencesUpdate;
+  };
 
   if (parsed.notificationsEnabled !== undefined) {
     updatePayload.notifications_enabled = parsed.notificationsEnabled;
   }
 
+  // Select user_id only to confirm rows were updated — not as a success flag
+  // via a full row body.
   const { data, error } = await supabase
     .from("planning_preferences")
     .update(updatePayload)
     .eq("user_id", user.id)
-    .select("*")
-    .single();
+    .select("user_id");
 
-  if (error || !data) {
-    throw new DatabaseError("Failed to update notification preferences");
+  if (error) {
+    return {
+      status: "error",
+      reason: "database",
+      supabaseCode: error.code ?? null,
+    };
   }
 
-  return data;
+  if (!data || data.length === 0) {
+    return { status: "error", reason: "not_found" };
+  }
+
+  return { status: "updated" };
 }

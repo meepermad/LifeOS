@@ -109,6 +109,16 @@ describe("POST /api/cron/notifications", () => {
       waitingFollowup: 0,
       overdueDecision: 0,
       planningFeedback: 0,
+      usersProcessed: 1,
+      disabled: 0,
+      notDue: 0,
+      stale: 0,
+      deduplicated: 0,
+      noContent: 0,
+      noSubscription: 0,
+      attempted: 1,
+      sent: 1,
+      failed: 0,
       skipped: 0,
       errors: 0,
     });
@@ -134,9 +144,20 @@ describe("POST /api/cron/notifications", () => {
       waitingFollowup: 0,
       overdueDecision: 0,
       planningFeedback: 0,
+      usersProcessed: 1,
+      disabled: 0,
+      notDue: 0,
+      stale: 0,
+      deduplicated: 0,
+      noContent: 0,
+      noSubscription: 0,
+      attempted: 1,
+      sent: 1,
+      failed: 0,
       skipped: 0,
       errors: 0,
     });
     expect(JSON.stringify(body)).not.toContain("user@");
+    expect(mocks.processScheduledNotifications).toHaveBeenCalled();
   });
 });

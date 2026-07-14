@@ -109,6 +109,8 @@ export type SendResult = {
   failureCount: number;
   invalidCount: number;
   subscriptionCount: number;
+  /** True when another worker already claimed or completed this occurrence. */
+  deduplicated?: boolean;
 };
 
 export const NOTIFICATION_TYPES = [

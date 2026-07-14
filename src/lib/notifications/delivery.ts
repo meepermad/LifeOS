@@ -32,8 +32,33 @@ export async function findDeliveryByKey(
   };
 }
 
+/**
+ * Statuses that suppress another send for the same logical occurrence.
+ * `failed` and retryable `skipped` rows may be reclaimed.
+ */
+export function suppressesDuplicateDelivery(
+  status: NotificationDeliveryStatus,
+): boolean {
+  return (
+    status === "pending" ||
+    status === "sending" ||
+    status === "sent" ||
+    status === "partial"
+  );
+}
+
+/**
+ * Legacy helper: terminal successful outcomes only.
+ * Premature/retryable `skipped` rows must not permanently suppress delivery.
+ */
 export function isDeliveryComplete(status: NotificationDeliveryStatus): boolean {
-  return status === "sent" || status === "partial" || status === "skipped";
+  return status === "sent" || status === "partial";
+}
+
+export function isRetryableDeliveryStatus(
+  status: NotificationDeliveryStatus,
+): boolean {
+  return status === "failed" || status === "skipped";
 }
 
 export async function createDelivery(
@@ -77,6 +102,86 @@ export async function createDelivery(
   };
 }
 
+/**
+ * Atomically claim a delivery for the logical occurrence.
+ * Reclaims retryable `failed` / `skipped` rows so obsolete premature skips
+ * cannot poison a later valid attempt for the same deduplication key.
+ */
+export async function claimDelivery(
+  client: DbClient,
+  input: {
+    userId: string;
+    notificationType: NotificationType;
+    scheduledFor: string;
+    deduplicationKey: string;
+    periodStart?: string | null;
+    periodEnd?: string | null;
+    payloadSummary?: Record<string, unknown>;
+  },
+): Promise<{ delivery: DeliveryRecord; claimed: boolean } | null> {
+  const existing = await findDeliveryByKey(client, input.deduplicationKey);
+
+  if (existing && suppressesDuplicateDelivery(existing.status)) {
+    return { delivery: existing, claimed: false };
+  }
+
+  if (existing && isRetryableDeliveryStatus(existing.status)) {
+    const { data, error } = await client
+      .from("notification_deliveries")
+      .update({
+        status: "pending",
+        scheduled_for: input.scheduledFor,
+        period_start: input.periodStart ?? null,
+        period_end: input.periodEnd ?? null,
+        payload_summary: (input.payloadSummary ?? null) as Json | null,
+        subscription_count: 0,
+        success_count: 0,
+        failure_count: 0,
+        safe_error: null,
+        sent_at: null,
+      })
+      .eq("id", existing.id)
+      .in("status", ["failed", "skipped"])
+      .select("id, deduplication_key, status")
+      .maybeSingle();
+
+    if (error) return null;
+
+    if (!data) {
+      const raced = await findDeliveryByKey(client, input.deduplicationKey);
+      if (!raced) return null;
+      return {
+        delivery: raced,
+        claimed: !suppressesDuplicateDelivery(raced.status)
+          ? false
+          : raced.status === "pending",
+      };
+    }
+
+    return {
+      delivery: {
+        id: data.id,
+        deduplicationKey: data.deduplication_key,
+        status: data.status as NotificationDeliveryStatus,
+      },
+      claimed: true,
+    };
+  }
+
+  const created = await createDelivery(client, input);
+  if (!created) return null;
+
+  // Unique race: another worker claimed first
+  if (created.status !== "pending") {
+    return {
+      delivery: created,
+      claimed: false,
+    };
+  }
+
+  return { delivery: created, claimed: true };
+}
+
 export async function updateDeliveryStatus(
   client: DbClient,
   deliveryId: string,
@@ -112,23 +217,16 @@ export async function markDeliverySkipped(
     reason: string;
   },
 ): Promise<void> {
-  const existing = await findDeliveryByKey(client, input.deduplicationKey);
-  if (existing && isDeliveryComplete(existing.status)) return;
+  const claimed = await claimDelivery(client, {
+    userId: input.userId,
+    notificationType: input.notificationType,
+    scheduledFor: input.scheduledFor,
+    deduplicationKey: input.deduplicationKey,
+  });
 
-  if (!existing) {
-    await client.from("notification_deliveries").insert({
-      user_id: input.userId,
-      notification_type: input.notificationType,
-      scheduled_for: input.scheduledFor,
-      deduplication_key: input.deduplicationKey,
-      status: "skipped",
-      safe_error: input.reason,
-      sent_at: new Date().toISOString(),
-    });
-    return;
-  }
+  if (!claimed || !claimed.claimed) return;
 
-  await updateDeliveryStatus(client, existing.id, {
+  await updateDeliveryStatus(client, claimed.delivery.id, {
     status: "skipped",
     subscriptionCount: 0,
     successCount: 0,

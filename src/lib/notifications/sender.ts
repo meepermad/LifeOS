@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import {
-  createDelivery,
+  claimDelivery,
   updateDeliveryStatus,
 } from "@/lib/notifications/delivery";
 import { serializePayload } from "@/lib/notifications/payloads";
@@ -44,19 +44,7 @@ export async function sendNotificationToUser(
 ): Promise<SendResult> {
   configureWebPush();
 
-  const subscriptions = await listActiveSubscriptions(client, input.userId);
-  const subscriptionCount = subscriptions.length;
-
-  if (subscriptionCount === 0) {
-    return {
-      successCount: 0,
-      failureCount: 0,
-      invalidCount: 0,
-      subscriptionCount: 0,
-    };
-  }
-
-  const delivery = await createDelivery(client, {
+  const claim = await claimDelivery(client, {
     userId: input.userId,
     notificationType: input.notificationType,
     scheduledFor: input.scheduledFor,
@@ -66,16 +54,47 @@ export async function sendNotificationToUser(
     payloadSummary: input.payloadSummary,
   });
 
-  if (!delivery) {
+  if (!claim) {
     return {
       successCount: 0,
-      failureCount: subscriptionCount,
+      failureCount: 0,
       invalidCount: 0,
-      subscriptionCount,
+      subscriptionCount: 0,
     };
   }
 
-  await updateDeliveryStatus(client, delivery.id, {
+  if (!claim.claimed) {
+    // Another in-flight or completed delivery owns this occurrence.
+    return {
+      successCount: 0,
+      failureCount: 0,
+      invalidCount: 0,
+      subscriptionCount: 0,
+      deduplicated: true,
+    };
+  }
+
+  const subscriptions = await listActiveSubscriptions(client, input.userId);
+  const subscriptionCount = subscriptions.length;
+
+  if (subscriptionCount === 0) {
+    await updateDeliveryStatus(client, claim.delivery.id, {
+      status: "skipped",
+      subscriptionCount: 0,
+      successCount: 0,
+      failureCount: 0,
+      safeError: "No active push subscription",
+      sentAt: new Date().toISOString(),
+    });
+    return {
+      successCount: 0,
+      failureCount: 0,
+      invalidCount: 0,
+      subscriptionCount: 0,
+    };
+  }
+
+  await updateDeliveryStatus(client, claim.delivery.id, {
     status: "sending",
     subscriptionCount,
     successCount: 0,
@@ -118,7 +137,7 @@ export async function sendNotificationToUser(
         ? "partial"
         : "sent";
 
-  await updateDeliveryStatus(client, delivery.id, {
+  await updateDeliveryStatus(client, claim.delivery.id, {
     status,
     subscriptionCount,
     successCount,

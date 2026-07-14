@@ -12,8 +12,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   findDeliveryByKey: vi.fn(),
-  isDeliveryComplete: vi.fn(),
-  markDeliverySkipped: vi.fn(),
+  suppressesDuplicateDelivery: vi.fn(),
   sendNotificationToUser: vi.fn(),
   calculateWorkloadWithEventCount: vi.fn(),
   fetchDeadlineTasks: vi.fn(),
@@ -26,8 +25,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/notifications/delivery", () => ({
   findDeliveryByKey: mocks.findDeliveryByKey,
-  isDeliveryComplete: mocks.isDeliveryComplete,
-  markDeliverySkipped: mocks.markDeliverySkipped,
+  suppressesDuplicateDelivery: mocks.suppressesDuplicateDelivery,
+  isDeliveryComplete: (status: string) =>
+    status === "sent" || status === "partial",
+  markDeliverySkipped: vi.fn(),
 }));
 
 vi.mock("@/lib/notifications/sender", () => ({
@@ -92,7 +93,7 @@ describe("review reminder scheduling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.findDeliveryByKey.mockResolvedValue(null);
-    mocks.isDeliveryComplete.mockReturnValue(false);
+    mocks.suppressesDuplicateDelivery.mockReturnValue(false);
     mocks.sendNotificationToUser.mockResolvedValue({
       successCount: 1,
       subscriptionCount: 1,
@@ -132,6 +133,7 @@ describe("review reminder scheduling", () => {
       basePreferences as never,
       0,
       now,
+      "America/Chicago",
     );
 
     expect(mocks.hasCompletedReviewSession).toHaveBeenCalledWith(
@@ -157,6 +159,7 @@ describe("review reminder scheduling", () => {
       basePreferences as never,
       0,
       now,
+      "America/Chicago",
     );
 
     expect(

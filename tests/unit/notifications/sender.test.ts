@@ -148,4 +148,64 @@ describe("sendNotificationToUser", () => {
     expect(JSON.stringify(result)).not.toContain("push.example.com");
     expect(JSON.stringify(result)).not.toContain("k1");
   });
+
+  it("reports no-subscription after claiming without exposing endpoints", async () => {
+    const client = createMockClient([]);
+    const result = await sendNotificationToUser(client as never, {
+      userId: "u1",
+      notificationType: "daily_agenda",
+      payload: {
+        title: "LifeOS daily plan",
+        body: "Your agenda and workload summary are ready.",
+        url: "/today",
+      },
+      deduplicationKey: "daily_agenda:u1:2026-07-14",
+      scheduledFor: "2026-07-14T18:00:00.000Z",
+    });
+
+    expect(result.subscriptionCount).toBe(0);
+    expect(result.successCount).toBe(0);
+    expect(JSON.stringify(result)).not.toContain("push.example.com");
+  });
+
+  it("does not send twice when another claim already owns the key", async () => {
+    const client = {
+      from: vi.fn((table: string) => {
+        if (table === "notification_deliveries") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(() =>
+                  Promise.resolve({
+                    data: {
+                      id: "existing",
+                      deduplication_key: "test:u1:race",
+                      status: "sending",
+                    },
+                    error: null,
+                  }),
+                ),
+              })),
+            })),
+          };
+        }
+        return {};
+      }),
+    };
+
+    const result = await sendNotificationToUser(client as never, {
+      userId: "u1",
+      notificationType: "test",
+      payload: {
+        title: "Test",
+        body: "Body",
+        url: "/settings",
+      },
+      deduplicationKey: "test:u1:race",
+      scheduledFor: new Date().toISOString(),
+    });
+
+    expect(result.deduplicated).toBe(true);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
 });

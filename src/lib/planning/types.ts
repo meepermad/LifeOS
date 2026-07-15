@@ -52,6 +52,8 @@ export type PlanningTask = {
   earliestStartAt: string | null;
   estimatedMinutes: number | null;
   remainingMinutes: number | null;
+  /** Reviewed/tracked minutes already spent on this task. */
+  trackedMinutes?: number;
   effectiveEstimateMinutes?: number | null;
   calibrationMeta?: {
     factor: number;
@@ -66,6 +68,14 @@ export type PlanningTask = {
   minimumBlockMinutes: number;
   source: string;
   relatedEventId: string | null;
+  workflowState?: string | null;
+  deferredUntilAt?: string | null;
+  inboxAt?: string | null;
+  parentTaskId?: string | null;
+  /** Recurrence template rows must never be scheduled. */
+  isRecurrenceTemplate?: boolean;
+  isDailyPriority?: boolean;
+  isWeeklyPriority?: boolean;
 };
 
 export type PlanningAvailabilityRule = {

@@ -5,6 +5,7 @@ import {
   toInterval,
 } from "@/lib/planning/intervals";
 import { matchesProposalHash } from "@/lib/planning/proposal-hash";
+import { getUnscheduledRemainingWorkMinutes } from "@/lib/planning/remaining-work-math";
 import { getTaskWorkloadMinutes } from "@/lib/planning/task-allocation";
 import type {
   PlanningEvent,
@@ -47,12 +48,14 @@ export function getUnscheduledRemainingMinutes(
   task: PlanningTask,
   events: PlanningEvent[],
   now: Date,
+  pendingProposalMinutes = 0,
 ): number {
-  const workload = getTaskWorkloadMinutes(task);
-  if (workload == null) return 0;
-
   const scheduled = getFutureConfirmedFocusMinutesForTask(task, events, now);
-  return Math.max(0, workload - scheduled);
+  return getUnscheduledRemainingWorkMinutes(
+    task,
+    scheduled,
+    pendingProposalMinutes,
+  );
 }
 
 export function validateProposalForAcceptance(
@@ -167,7 +170,11 @@ export function validateProposalForAcceptance(
     };
   }
 
-  if (task.dueAt && endMs > new Date(task.dueAt).getTime()) {
+  if (
+    task.dueAt &&
+    endMs > new Date(task.dueAt).getTime() &&
+    new Date(task.dueAt).getTime() >= now.getTime()
+  ) {
     return {
       valid: false,
       reason: "This block would extend past the task deadline.",

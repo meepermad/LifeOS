@@ -22,6 +22,7 @@ import {
 import { getAcademicBlockingEvents } from "@/lib/academic/planning-blocks";
 import { generatePlanningProposals } from "@/lib/planning/proposal-generator";
 import { computePlanningInputHash } from "@/lib/planning/proposal-hash";
+import { getDailyPriorities, getWeeklyPriorities } from "@/lib/data/reviews";
 import type {
   FocusBlockProposal,
   PlanningGenerationResult,
@@ -103,7 +104,12 @@ export async function loadPlanningInputs(
   const period = await resolvePeriod(request);
   const now = new Date();
 
-  const [events, tasks, availabilityRules, preferences, activeRun, academicBlocks] =
+  const todayKey = getAppLocalDateKey(now);
+  const weekStartKey = getAppLocalDateKey(
+    getWeekBounds(now, period.weekStartsOn, 0).start,
+  );
+
+  const [events, tasks, availabilityRules, preferences, activeRun, academicBlocks, dailyPriorities, weeklyPriorities] =
     await Promise.all([
       listEventsInRange(
         period.periodStart.toISOString(),
@@ -114,7 +120,12 @@ export async function loadPlanningInputs(
       getPlanningPreferences(),
       getActivePlanningRun(request),
       getAcademicBlockingEvents(period.dayKeys),
+      getDailyPriorities(todayKey).catch(() => []),
+      getWeeklyPriorities(weekStartKey).catch(() => []),
     ]);
+
+  const dailyPriorityIds = new Set(dailyPriorities.map((p) => p.task_id));
+  const weeklyPriorityIds = new Set(weeklyPriorities.map((p) => p.task_id));
 
   const acceptedProposalIntervals =
     activeRun?.proposals
@@ -141,7 +152,11 @@ export async function loadPlanningInputs(
     tasks,
     preferences,
     calibrationContext,
-  );
+  ).map((task) => ({
+    ...task,
+    isDailyPriority: dailyPriorityIds.has(task.id),
+    isWeeklyPriority: weeklyPriorityIds.has(task.id),
+  }));
 
   const base = buildProposalInputs({
     events,

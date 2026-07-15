@@ -11,7 +11,8 @@
     "generate-icons": "node scripts/generate-icons.mjs",
     "postinstall": "node scripts/generate-icons.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:planner": "vitest run tests/unit/planning/benchmarks tests/unit/planning/invariants tests/unit/planning/property tests/integration/planning"
   },
   "dependencies": {
     "@azure/msal-node": "^5.4.0",

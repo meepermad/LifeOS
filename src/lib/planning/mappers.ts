@@ -39,6 +39,10 @@ export function toPlanningTask(task: TaskRow): PlanningTask {
     minimumBlockMinutes: task.minimum_block_minutes,
     source: task.source,
     relatedEventId: task.related_event_id,
+    workflowState: task.workflow_state ?? null,
+    deferredUntilAt: task.deferred_until_at ?? null,
+    inboxAt: task.inbox_at ?? null,
+    parentTaskId: task.parent_task_id ?? null,
   };
 }
 

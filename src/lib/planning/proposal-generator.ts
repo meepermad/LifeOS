@@ -25,11 +25,24 @@ import type {
   UnschedulableTask,
 } from "@/lib/planning/types";
 
-function getReasonForTask(task: {
-  dueAt: string | null;
-  priority: number;
-}, isOverdue: boolean): string {
+function getReasonForTask(
+  task: {
+    dueAt: string | null;
+    priority: number;
+    isDailyPriority?: boolean;
+    isWeeklyPriority?: boolean;
+  },
+  isOverdue: boolean,
+  now: Date,
+): string {
   if (isOverdue) return "overdue_high_priority";
+  if (task.dueAt) {
+    const hoursUntilDue =
+      (new Date(task.dueAt).getTime() - now.getTime()) / 3_600_000;
+    if (hoursUntilDue <= 24) return "deadline_urgency";
+  }
+  if (task.isDailyPriority) return "daily_priority";
+  if (task.isWeeklyPriority) return "weekly_priority";
   if (task.priority <= 2) return "earliest_due_high_priority";
   return "earliest_due_high_priority";
 }
@@ -72,6 +85,12 @@ export function generatePlanningProposals(
   for (const task of relevantTasks) {
     if (isUnestimatedTask(task)) {
       warnings.push(`Task “${task.title}” has no estimate and was skipped.`);
+      unschedulableTasks.push({
+        taskId: task.id,
+        taskTitle: task.title,
+        unscheduledRemainingMinutes: 0,
+        reason: "Missing estimate — requires an estimate or manual scheduling.",
+      });
       continue;
     }
 
@@ -83,7 +102,11 @@ export function generatePlanningProposals(
 
     if (unscheduled <= 0) continue;
 
-    const eligibleDates = getEligibleDatesForTask(task, inputs.dayKeys);
+    const eligibleDates = getEligibleDatesForTask(
+      task,
+      inputs.dayKeys,
+      inputs.now,
+    );
     if (eligibleDates.length === 0) {
       unschedulableTasks.push({
         taskId: task.id,
@@ -104,7 +127,7 @@ export function generatePlanningProposals(
     const isOverdue = task.dueAt
       ? new Date(task.dueAt) < inputs.now
       : false;
-    const reason = getReasonForTask(task, isOverdue);
+    const reason = getReasonForTask(task, isOverdue, inputs.now);
 
     const datesToTry = task.splittable
       ? [...eligibleDates]
@@ -195,6 +218,7 @@ export function generatePlanningProposals(
         dayBudgetMinutes: dayBudget,
         scheduledBefore,
         reason,
+        now: inputs.now,
       });
 
       if (!proposal) {

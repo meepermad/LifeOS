@@ -1,5 +1,9 @@
 import { getAppLocalDateKey, isOverdue } from "@/lib/dates/timezone";
 import { addAppDays } from "@/lib/dates/timezone";
+import {
+  getPlanningEstimateMinutes,
+  getRemainingWorkMinutes,
+} from "@/lib/planning/remaining-work-math";
 import type {
   AllocationResult,
   DayAllocation,
@@ -8,20 +12,77 @@ import type {
   TaskSortComponents,
 } from "@/lib/planning/types";
 import { ACTIVE_TASK_STATUSES } from "@/lib/planning/types";
+import {
+  isActionableWorkload,
+  isDeferredHidden,
+  isInboxTask,
+} from "@/lib/tasks/triage";
 
 export function getTaskWorkloadMinutes(task: PlanningTask): number | null {
-  if (task.remainingMinutes != null) return task.remainingMinutes;
-  if (task.effectiveEstimateMinutes != null) return task.effectiveEstimateMinutes;
-  if (task.estimatedMinutes != null) return task.estimatedMinutes;
-  return null;
+  return getRemainingWorkMinutes(task);
 }
+
+export { getPlanningEstimateMinutes };
 
 export function isActiveTask(task: PlanningTask): boolean {
   return ACTIVE_TASK_STATUSES.includes(task.status);
 }
 
+export function isPlannerEligibleTask(
+  task: PlanningTask,
+  now: Date,
+): { eligible: boolean; reason: string | null } {
+  if (task.isRecurrenceTemplate || task.parentTaskId) {
+    return { eligible: false, reason: "recurrence_template_or_child" };
+  }
+  if (!isActiveTask(task)) {
+    return { eligible: false, reason: "inactive_status" };
+  }
+  if (task.status === "completed" || task.status === "cancelled") {
+    return { eligible: false, reason: "completed_or_cancelled" };
+  }
+  if (isInboxTask({ inbox_at: task.inboxAt ?? null })) {
+    return { eligible: false, reason: "inbox_unestimated_or_untriaged" };
+  }
+  if (
+    task.workflowState &&
+    task.workflowState !== "actionable" &&
+    ["waiting", "someday", "backlog"].includes(task.workflowState)
+  ) {
+    return { eligible: false, reason: `workflow_${task.workflowState}` };
+  }
+  if (
+    isDeferredHidden(
+      { deferred_until_at: task.deferredUntilAt ?? null },
+      now,
+    )
+  ) {
+    return { eligible: false, reason: "deferred_until_future" };
+  }
+  if (
+    !isActionableWorkload(
+      {
+        inbox_at: task.inboxAt ?? null,
+        due_at: task.dueAt,
+        workflow_state: task.workflowState ?? "actionable",
+        deferred_until_at: task.deferredUntilAt ?? null,
+        sync_managed: false,
+      },
+      now,
+    ) &&
+    task.workflowState != null
+  ) {
+    return { eligible: false, reason: "not_actionable" };
+  }
+  return { eligible: true, reason: null };
+}
+
 export function isUnestimatedTask(task: PlanningTask): boolean {
-  return getTaskWorkloadMinutes(task) === null;
+  return (
+    task.estimatedMinutes == null &&
+    task.remainingMinutes == null &&
+    task.effectiveEstimateMinutes == null
+  );
 }
 
 function getTaskDueDateKey(task: PlanningTask): string | null {
@@ -48,6 +109,16 @@ export function getTaskSortComponents(
   };
 }
 
+/**
+ * Deterministic ranking:
+ * 1. Overdue first
+ * 2. Earlier hard deadline (deadline urgency beats priority number)
+ * 3. Daily priority, then weekly priority
+ * 4. Lower priority number (1 = highest)
+ * 5. Higher difficulty
+ * 6. Larger remaining workload
+ * 7. Stable id tie-break
+ */
 export function compareTasks(
   a: PlanningTask,
   b: PlanningTask,
@@ -70,6 +141,14 @@ export function compareTasks(
     return 1;
   }
 
+  const aDaily = a.isDailyPriority ? 1 : 0;
+  const bDaily = b.isDailyPriority ? 1 : 0;
+  if (aDaily !== bDaily) return bDaily - aDaily;
+
+  const aWeekly = a.isWeeklyPriority ? 1 : 0;
+  const bWeekly = b.isWeeklyPriority ? 1 : 0;
+  if (aWeekly !== bWeekly) return bWeekly - aWeekly;
+
   if (aSort.priority !== bSort.priority) {
     return aSort.priority - bSort.priority;
   }
@@ -78,19 +157,28 @@ export function compareTasks(
     return bSort.difficulty - aSort.difficulty;
   }
 
-  return bSort.workloadMinutes - aSort.workloadMinutes;
+  if (aSort.workloadMinutes !== bSort.workloadMinutes) {
+    return bSort.workloadMinutes - aSort.workloadMinutes;
+  }
+
+  return a.id.localeCompare(b.id);
 }
 
 export function getEligibleDatesForTask(
   task: PlanningTask,
   dayKeys: string[],
+  now?: Date,
 ): string[] {
   const earliestKey = getTaskEarliestDateKey(task);
   const dueKey = getTaskDueDateKey(task);
+  const overdue =
+    now != null && task.dueAt != null ? isOverdue(task.dueAt, now) : false;
 
   return dayKeys.filter((dateKey) => {
     if (earliestKey && dateKey < earliestKey) return false;
-    if (dueKey && dateKey > dueKey) return false;
+    // Overdue tasks remain eligible after the original due day so recovery
+    // planning can place work in the next valid intervals.
+    if (dueKey && dateKey > dueKey && !overdue) return false;
     return true;
   });
 }
@@ -102,7 +190,10 @@ export function getRelevantTasksForPeriod(input: {
   periodType: "day" | "week";
 }): PlanningTask[] {
   const { tasks, dayKeys, now, periodType } = input;
-  const activeTasks = tasks.filter(isActiveTask);
+  const activeTasks = tasks.filter((task) => {
+    const eligibility = isPlannerEligibleTask(task, now);
+    return eligibility.eligible;
+  });
   const periodStart = dayKeys[0];
   const periodEnd = dayKeys[dayKeys.length - 1];
   const seen = new Set<string>();
@@ -126,7 +217,7 @@ export function getRelevantTasksForPeriod(input: {
 
     if (periodType === "day") {
       const todayKey = dayKeys[0];
-      const eligible = getEligibleDatesForTask(task, dayKeys);
+      const eligible = getEligibleDatesForTask(task, dayKeys, now);
       const allocatedToday = eligible.includes(todayKey);
 
       if (dueKey === todayKey || allocatedToday || !dueKey) {
@@ -140,7 +231,7 @@ export function getRelevantTasksForPeriod(input: {
       continue;
     }
 
-    const eligible = getEligibleDatesForTask(task, dayKeys);
+    const eligible = getEligibleDatesForTask(task, dayKeys, now);
     if (eligible.length > 0) {
       const canBegin =
         !earliestKey || earliestKey <= periodEnd;
@@ -293,7 +384,7 @@ export function allocateTasks(input: {
       continue;
     }
 
-    const eligibleDates = getEligibleDatesForTask(task, input.dayKeys);
+    const eligibleDates = getEligibleDatesForTask(task, input.dayKeys, input.now);
     const { allocations, unallocated } = task.splittable
       ? allocateSplittableTask(task, eligibleDates, remainingCapacity)
       : allocateNonSplittableTask(task, eligibleDates, remainingCapacity);

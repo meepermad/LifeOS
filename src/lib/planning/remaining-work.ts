@@ -5,6 +5,7 @@ import {
 import { getTaskFocusScheduleSummaries } from "@/lib/data/planning";
 import { sumTrackedSecondsForTask } from "@/lib/data/time-entries";
 import type { TaskFocusScheduleSummary } from "@/lib/data/planning";
+import { buildRemainingWorkBreakdown } from "@/lib/planning/remaining-work-math";
 import type { TaskRow } from "@/types/domain";
 
 export type TaskRemainingWorkBreakdown = {
@@ -34,26 +35,34 @@ export async function getTaskRemainingWorkBreakdown(
 
   const summary = scheduleSummary ?? summaryMap.get(task.id);
   const plannedFutureMinutes = summary?.futureScheduledFocusMinutes ?? 0;
-  const unscheduledRemainingMinutes = summary?.unscheduledRemainingMinutes ?? 0;
-  const remainingMinutes =
-    summary?.remainingMinutes ??
-    task.remaining_minutes ??
-    task.estimated_minutes;
+  const trackedMinutes = Math.round(trackedSeconds / 60);
+
+  const pure = buildRemainingWorkBreakdown({
+    task: {
+      estimatedMinutes: task.estimated_minutes,
+      effectiveEstimateMinutes: null,
+      remainingMinutes: task.remaining_minutes,
+      trackedMinutes,
+    },
+    plannedFutureMinutes,
+  });
 
   return {
     taskId: task.id,
-    originalEstimateMinutes: task.estimated_minutes,
-    adaptiveEstimateMinutes: task.remaining_minutes,
-    trackedMinutes: Math.round(trackedSeconds / 60),
+    originalEstimateMinutes: pure.originalEstimateMinutes,
+    adaptiveEstimateMinutes: pure.adaptiveEstimateMinutes,
+    trackedMinutes: pure.trackedMinutes,
     reviewedActualMinutes:
       snapshot != null
         ? Math.round(snapshot.final_actual_seconds / 60)
         : reviewedSeconds > 0
           ? Math.round(reviewedSeconds / 60)
           : null,
-    plannedFutureMinutes,
-    remainingMinutes,
-    unscheduledRemainingMinutes,
+    plannedFutureMinutes: pure.plannedFutureMinutes,
+    remainingMinutes: pure.remainingWorkMinutes,
+    unscheduledRemainingMinutes:
+      summary?.unscheduledRemainingMinutes ??
+      pure.unscheduledRemainingMinutes,
   };
 }
 

@@ -1,4 +1,4 @@
-import { toUtcFromAppLocal } from "@/lib/dates/timezone";
+import { isOverdue, toUtcFromAppLocal } from "@/lib/dates/timezone";
 import {
   intervalDurationMinutes,
   mergeIntervals,
@@ -148,6 +148,7 @@ export function placeFocusBlock(input: {
   dayBudgetMinutes: number;
   scheduledBefore: number;
   reason: string;
+  now?: Date;
 }): FocusBlockProposal | null {
   const {
     task,
@@ -159,6 +160,7 @@ export function placeFocusBlock(input: {
     dayBudgetMinutes,
     scheduledBefore,
     reason,
+    now = new Date(),
   } = input;
 
   const blockSize = chooseBlockSize({
@@ -181,15 +183,41 @@ export function placeFocusBlock(input: {
   const earliestMs = task.earliestStartAt
     ? new Date(task.earliestStartAt).getTime()
     : undefined;
-  const latestEndMs = task.dueAt ? new Date(task.dueAt).getTime() : undefined;
+  // Overdue tasks may end after the original deadline so recovery planning works.
+  const latestEndMs =
+    task.dueAt && !isOverdue(task.dueAt, now)
+      ? new Date(task.dueAt).getTime()
+      : undefined;
   const preferEndBeforeMs =
     task.difficulty >= DIFFICULT_WORK_THRESHOLD
       ? getDifficultWorkCutoffMs(dateKey, preferences.avoidDifficultWorkAfter)
       : null;
 
+  // Prefer a contiguous placement of remaining work when a single interval fits
+  // (up to max focus), to avoid unnecessary fragmentation.
+  const contiguousTarget = Math.min(
+    remainingMinutes,
+    preferences.maximumFocusBlockMinutes,
+    dayBudgetMinutes,
+  );
+  const canPlaceContiguous =
+    task.splittable &&
+    contiguousTarget >= task.minimumBlockMinutes &&
+    contiguousTarget > blockSize &&
+    shrunk.some((interval) => {
+      let startMs = interval.startMs;
+      if (earliestMs != null) startMs = Math.max(startMs, earliestMs);
+      const endMs = startMs + contiguousTarget * 60_000;
+      if (endMs > interval.endMs) return false;
+      if (latestEndMs != null && endMs > latestEndMs) return false;
+      return true;
+    });
+
+  const durationMinutes = canPlaceContiguous ? contiguousTarget : blockSize;
+
   const slot = findSlotInIntervals({
     intervals: shrunk,
-    durationMinutes: blockSize,
+    durationMinutes,
     earliestMs,
     latestEndMs: latestEndMs ?? undefined,
     preferEndBeforeMs: preferEndBeforeMs ?? undefined,
@@ -197,12 +225,36 @@ export function placeFocusBlock(input: {
 
   if (!slot) {
     if (!task.splittable) return null;
+    // Fall back to preferred/smaller size if contiguous attempt failed.
+    if (durationMinutes !== blockSize) {
+      const fallback = findSlotInIntervals({
+        intervals: shrunk,
+        durationMinutes: blockSize,
+        earliestMs,
+        latestEndMs: latestEndMs ?? undefined,
+        preferEndBeforeMs: preferEndBeforeMs ?? undefined,
+      });
+      if (!fallback) return null;
+      return buildPlacedProposal({
+        task,
+        slot: fallback,
+        proposedMinutes: blockSize,
+        preferences,
+        scheduledBefore,
+        reason,
+        remainingMinutes,
+        preferenceMatchesExtra: [],
+      });
+    }
     return null;
   }
 
   const preferenceMatches: string[] = [];
-  if (blockSize === preferences.preferredFocusBlockMinutes) {
+  if (durationMinutes === preferences.preferredFocusBlockMinutes) {
     preferenceMatches.push("preferred_block_length");
+  }
+  if (canPlaceContiguous && durationMinutes === contiguousTarget) {
+    preferenceMatches.push("contiguous_interval");
   }
   if (
     preferEndBeforeMs != null &&
@@ -211,10 +263,44 @@ export function placeFocusBlock(input: {
     preferenceMatches.push("before_difficult_work_cutoff");
   }
 
+  return buildPlacedProposal({
+    task,
+    slot,
+    proposedMinutes: durationMinutes,
+    preferences,
+    scheduledBefore,
+    reason,
+    remainingMinutes,
+    preferenceMatchesExtra: preferenceMatches,
+  });
+}
+
+function buildPlacedProposal(input: {
+  task: PlanningTask;
+  slot: { startMs: number; endMs: number; preferenceViolations: string[] };
+  proposedMinutes: number;
+  preferences: PlanningPreferences;
+  scheduledBefore: number;
+  reason: string;
+  remainingMinutes: number;
+  preferenceMatchesExtra: string[];
+}): FocusBlockProposal {
+  const {
+    task,
+    slot,
+    proposedMinutes,
+    scheduledBefore,
+    reason,
+    remainingMinutes,
+    preferenceMatchesExtra,
+  } = input;
   const proposedStartAt = new Date(slot.startMs).toISOString();
   const proposedEndAt = new Date(slot.endMs).toISOString();
-  const proposedMinutes = blockSize;
-  const taskRemaining = task.remainingMinutes ?? task.estimatedMinutes ?? 0;
+  const taskRemaining =
+    task.effectiveEstimateMinutes ??
+    task.remainingMinutes ??
+    task.estimatedMinutes ??
+    0;
 
   const explanation: ProposalExplanation = buildProposalExplanation({
     reason,
@@ -225,7 +311,7 @@ export function placeFocusBlock(input: {
     }),
     taskRemainingMinutes: taskRemaining,
     scheduledTaskMinutesBeforeProposal: scheduledBefore,
-    preferenceMatches,
+    preferenceMatches: preferenceMatchesExtra,
     preferenceViolations: slot.preferenceViolations,
     calibration:
       task.calibrationMeta && task.estimatedMinutes != null

@@ -1,0 +1,1076 @@
+{
+  "runAt": "2026-07-15T16:08:50.931Z",
+  "scenarioCount": 29,
+  "passedCount": 29,
+  "failedCount": 0,
+  "results": [
+    {
+      "scenarioId": "S01",
+      "scenarioName": "Simple task — reflection before deadline",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 10,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 90,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S02",
+      "scenarioName": "Narrow gaps between fixed events",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 120,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S03",
+      "scenarioName": "Deadline beats priority when capacity is tight",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 120,
+        "atRiskTaskIds": [
+          "task-a"
+        ],
+        "unschedulableTaskIds": [
+          "task-a"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S04",
+      "scenarioName": "High-priority conflict — cannot fit both fully",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 90,
+        "unscheduledMinutes": 90,
+        "atRiskTaskIds": [
+          "task-b"
+        ],
+        "unschedulableTaskIds": [
+          "task-b"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S05",
+      "scenarioName": "Weekly insufficient capacity",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 57,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 7,
+        "totalProposedMinutes": 420,
+        "unscheduledMinutes": 420,
+        "atRiskTaskIds": [
+          "task-w2"
+        ],
+        "unschedulableTaskIds": [
+          "task-w2"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S06",
+      "scenarioName": "Existing accepted blocks preserved",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S07",
+      "scenarioName": "Partial progress — tracked and future focus",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 0,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 22,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 70,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S08",
+      "scenarioName": "Adaptive estimate with calibration provenance",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 16,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 2,
+        "totalProposedMinutes": 140,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S09",
+      "scenarioName": "Calibration below sample threshold — no adaptive apply",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 10,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 100,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S10",
+      "scenarioName": "No estimate — skipped and diagnosed",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 2,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 0,
+        "totalProposedMinutes": 0,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": [
+          "task-unestimated"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S11",
+      "scenarioName": "Overdue task still eligible",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S12",
+      "scenarioName": "Waiting, deferred, and actionable triage",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 15,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S13",
+      "scenarioName": "Recurring instances — template never scheduled",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 15,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S14",
+      "scenarioName": "Split 180 minutes across Mon–Wed",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 20,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 3,
+        "totalProposedMinutes": 180,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S15",
+      "scenarioName": "Prefer single block over fragmented gaps",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 120,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S16",
+      "scenarioName": "Maximum focus block size enforced",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 14,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 2,
+        "totalProposedMinutes": 180,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S17",
+      "scenarioName": "Minimum break between consecutive tasks",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 17,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 2,
+        "totalProposedMinutes": 90,
+        "unscheduledMinutes": 30,
+        "atRiskTaskIds": [
+          "task-break-b"
+        ],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S18",
+      "scenarioName": "Class and work events remain blocking",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S19",
+      "scenarioName": "Non-blocking personal event preserves availability",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 90,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S20",
+      "scenarioName": "All-day deadline marker does not block scheduling",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S21",
+      "scenarioName": "Cross-midnight availability until deadline",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 90,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S22-spring",
+      "scenarioName": "DST spring forward — duration correctness",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S22-fall",
+      "scenarioName": "DST fall back — duration correctness",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S23",
+      "scenarioName": "Week boundary — plan next week from Sunday evening",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S24",
+      "scenarioName": "Daily priority receives favorable ranking",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 60,
+        "atRiskTaskIds": [
+          "task-regular"
+        ],
+        "unschedulableTaskIds": [
+          "task-regular"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S25",
+      "scenarioName": "Weekly priority influence",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 12,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 60,
+        "atRiskTaskIds": [
+          "task-normal"
+        ],
+        "unschedulableTaskIds": [
+          "task-normal"
+        ]
+      }
+    },
+    {
+      "scenarioId": "S26",
+      "scenarioName": "Avoid difficult work after evening cutoff",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S27",
+      "scenarioName": "Deterministic output across repeated runs",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 17,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 2,
+        "totalProposedMinutes": 105,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    },
+    {
+      "scenarioId": "S28",
+      "scenarioName": "Idempotent proposal acceptance",
+      "passed": true,
+      "criticalFailures": [],
+      "expectationFailures": [],
+      "invariantReport": {
+        "passCount": 9,
+        "failCount": 0,
+        "passRate": 1,
+        "criticalFailureMessages": []
+      },
+      "scorecard": {
+        "feasibility": 2,
+        "deadlineCompliance": 2,
+        "capacityHonesty": 2,
+        "priorityRationality": 2,
+        "estimateCorrectness": 2,
+        "remainingWorkCorrectness": 2,
+        "fragmentationQuality": 2,
+        "preferenceCompliance": 2,
+        "historyPreservation": 2,
+        "explanationAccuracy": 2,
+        "determinism": 2,
+        "idempotency": 2
+      },
+      "scoreTotal": 24,
+      "scoreMax": 24,
+      "summary": {
+        "proposalCount": 1,
+        "totalProposedMinutes": 60,
+        "unscheduledMinutes": 0,
+        "atRiskTaskIds": [],
+        "unschedulableTaskIds": []
+      }
+    }
+  ]
+}

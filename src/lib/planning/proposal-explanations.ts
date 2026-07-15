@@ -42,6 +42,12 @@ const REASON_INTROS: Record<string, string> = {
     "Scheduled here because this is a high-priority task",
   overdue_high_priority:
     "Scheduled here because this overdue task needs attention",
+  deadline_urgency:
+    "Scheduled here because of an imminent deadline",
+  daily_priority:
+    "Scheduled here because it is a daily priority",
+  weekly_priority:
+    "Scheduled here because it is a weekly priority",
   splittable_spread: "Scheduled here to spread this task across available days",
   non_splittable_fit: "Scheduled here because the full block fits this open interval",
   only_available_slot: "Scheduled here because it was the only feasible open interval",

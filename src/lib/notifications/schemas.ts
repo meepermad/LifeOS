@@ -24,11 +24,47 @@ export const pushSubscriptionInputSchema = z
 
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
 
+const notificationDestinationSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("today") }),
+  z.object({
+    kind: z.literal("calendar_week"),
+    localDate: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("daily_review"),
+    period: z.enum(["morning", "evening"]),
+    step: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("weekly_review"),
+    weekStart: z.string().optional(),
+    step: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("task"),
+    taskId: z.string().uuid().optional(),
+    view: z.enum(["today", "upcoming", "overdue", "waiting"]).optional(),
+  }),
+  z.object({
+    kind: z.literal("planning_feedback"),
+    planningBlockId: z.string().uuid().optional(),
+  }),
+  z.object({
+    kind: z.literal("active_timer"),
+    timeEntryId: z.string().uuid().optional(),
+  }),
+  z.object({ kind: z.literal("notification_settings") }),
+]);
+
 export const notificationPayloadSchema = z.object({
+  version: z.literal(1).optional(),
+  notificationType: z.string().optional(),
+  destination: notificationDestinationSchema.optional(),
+  deliveryId: z.string().uuid().optional(),
   title: z.string().min(1).max(120),
   body: z.string().min(1).max(300),
   tag: z.string().max(64).optional(),
-  url: z.string().max(256),
+  url: z.string().max(512),
   badgeCount: z.number().int().min(0).optional(),
 });
 

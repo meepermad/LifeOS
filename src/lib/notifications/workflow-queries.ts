@@ -78,11 +78,11 @@ export async function countWaitingFollowupsDue(
   return rows.length;
 }
 
-export async function countOverdueNeedingDecision(
+export async function listOverdueNeedingDecision(
   client: DbClient,
   userId: string,
   now = new Date(),
-): Promise<number> {
+): Promise<string[]> {
   const dateKey = getAppLocalDateKey(now);
   const { data, error } = await client
     .from("tasks")
@@ -93,7 +93,7 @@ export async function countOverdueNeedingDecision(
     .in("status", ["open", "in_progress"])
     .not("due_at", "is", null);
 
-  if (error) return 0;
+  if (error) return [];
 
   const decidedTaskIds = await collectDecidedOverdueTaskIds(
     client,
@@ -101,21 +101,32 @@ export async function countOverdueNeedingDecision(
     dateKey,
   );
 
-  return (data ?? []).filter((task) => {
-    const row = task as TaskRow;
-    return (
-      isOverdue(row.due_at!, now) &&
-      isActionableWorkload(row, now) &&
-      isOverdueCandidateNeedingDecision(row, now, decidedTaskIds)
-    );
-  }).length;
+  return (data ?? [])
+    .filter((task) => {
+      const row = task as TaskRow;
+      return (
+        isOverdue(row.due_at!, now) &&
+        isActionableWorkload(row, now) &&
+        isOverdueCandidateNeedingDecision(row, now, decidedTaskIds)
+      );
+    })
+    .map((task) => task.id);
 }
 
-export async function countAwaitingPlanningFeedback(
+export async function countOverdueNeedingDecision(
   client: DbClient,
   userId: string,
   now = new Date(),
 ): Promise<number> {
+  const ids = await listOverdueNeedingDecision(client, userId, now);
+  return ids.length;
+}
+
+export async function listAwaitingPlanningFeedback(
+  client: DbClient,
+  userId: string,
+  now = new Date(),
+): Promise<string[]> {
   const nowIso = now.toISOString();
 
   const { data: events, error } = await client
@@ -126,12 +137,12 @@ export async function countAwaitingPlanningFeedback(
     .eq("status", "confirmed")
     .lt("end_at", nowIso);
 
-  if (error || !events?.length) return 0;
+  if (error || !events?.length) return [];
 
   const eligible = events.filter((event) =>
     isAwaitingFeedbackEligible(event, now),
   );
-  if (!eligible.length) return 0;
+  if (!eligible.length) return [];
 
   const eventIds = eligible.map((event) => event.id);
   const { data: feedback, error: feedbackError } = await client
@@ -140,10 +151,21 @@ export async function countAwaitingPlanningFeedback(
     .eq("user_id", userId)
     .in("event_id", eventIds);
 
-  if (feedbackError) return 0;
+  if (feedbackError) return [];
 
   const feedbackIds = new Set((feedback ?? []).map((row) => row.event_id));
-  return eligible.filter((event) => !feedbackIds.has(event.id)).length;
+  return eligible
+    .filter((event) => !feedbackIds.has(event.id))
+    .map((event) => event.id);
+}
+
+export async function countAwaitingPlanningFeedback(
+  client: DbClient,
+  userId: string,
+  now = new Date(),
+): Promise<number> {
+  const ids = await listAwaitingPlanningFeedback(client, userId, now);
+  return ids.length;
 }
 
 export async function countInboxTasks(

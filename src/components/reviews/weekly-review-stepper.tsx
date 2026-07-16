@@ -34,15 +34,20 @@ function clampStep(index: number, length: number): number {
 export function WeeklyReviewStepper({
   context,
   weekOffset = 0,
+  initialStepIndex,
 }: {
   context: WeeklyReviewContext;
   weekOffset?: number;
+  initialStepIndex?: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(
-    clampStep(context.session?.current_step ?? 0, WEEKLY_REVIEW_STEPS.length),
+    clampStep(
+      initialStepIndex ?? context.session?.current_step ?? 0,
+      WEEKLY_REVIEW_STEPS.length,
+    ),
   );
   const [sessionId, setSessionId] = useState<string | null>(
     context.session?.id ?? context.completedSession?.id ?? null,

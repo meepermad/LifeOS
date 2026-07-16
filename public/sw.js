@@ -1,5 +1,9 @@
-const CACHE_NAME = "lifeos-shell-v2";
+const CACHE_NAME = "lifeos-shell-v3";
 const SHELL_URLS = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
+
+importScripts("/lifeos-notification-destinations.js");
+
+var Dest = self.LifeOsNotificationDestinations;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -54,29 +58,126 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-const ALLOWED_ROUTES = ["/today", "/week", "/tasks", "/settings", "/status", "/work", "/calendar"];
-
-function sanitizeUrl(url) {
-  if (typeof url !== "string" || !url.startsWith("/")) return "/today";
-  if (url.includes("://") || url.startsWith("//")) return "/today";
-  const path = url.split("?")[0].split("#")[0];
-  return ALLOWED_ROUTES.includes(path) ? path : "/today";
+function logClickDiag(fields) {
+  try {
+    if (typeof console !== "undefined" && console.debug) {
+      console.debug("[lifeos-sw-notification]", fields);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 function parsePushPayload(event) {
   try {
     const data = event.data ? event.data.json() : null;
     if (!data || typeof data !== "object") return null;
+    const path = Dest.resolvePathFromPushData(data);
     return {
       title: typeof data.title === "string" ? data.title : "LifeOS",
-      body: typeof data.body === "string" ? data.body : "You have a new notification.",
+      body:
+        typeof data.body === "string"
+          ? data.body
+          : "You have a new notification.",
       tag: typeof data.tag === "string" ? data.tag : "lifeos-notification",
-      url: sanitizeUrl(data.url),
-      badgeCount: typeof data.badgeCount === "number" ? data.badgeCount : undefined,
+      notificationType:
+        typeof data.notificationType === "string"
+          ? data.notificationType
+          : undefined,
+      destination: data.destination,
+      url: path,
+      legacy: !data.destination,
+      badgeCount:
+        typeof data.badgeCount === "number" ? data.badgeCount : undefined,
     };
   } catch {
     return null;
   }
+}
+
+function toAbsoluteUrl(path) {
+  try {
+    return new URL(path, self.location.origin).href;
+  } catch {
+    return new URL("/today", self.location.origin).href;
+  }
+}
+
+function openOrFocusClient(absoluteUrl, path, meta) {
+  return self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clientList) => {
+      const sameOrigin = clientList.filter((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin;
+        } catch {
+          return false;
+        }
+      });
+
+      const preferred =
+        sameOrigin.find((c) => c.focused) ||
+        sameOrigin.find((c) => c.visibilityState === "visible") ||
+        sameOrigin[0];
+
+      if (preferred) {
+        logClickDiag({
+          ...meta,
+          existingClientFound: true,
+        });
+        const navigatePromise =
+          typeof preferred.navigate === "function"
+            ? preferred.navigate(absoluteUrl)
+            : Promise.reject(new Error("navigate unsupported"));
+
+        return navigatePromise
+          .then((navigated) => {
+            logClickDiag({
+              ...meta,
+              existingClientFound: true,
+              navigateSucceeded: true,
+            });
+            if (navigated && "focus" in navigated) {
+              return navigated.focus();
+            }
+            if ("focus" in preferred) {
+              return preferred.focus();
+            }
+            return preferred;
+          })
+          .catch(() => {
+            if (typeof preferred.postMessage === "function") {
+              preferred.postMessage({
+                type: "LIFEOS_NOTIFICATION_NAVIGATE",
+                path: path,
+              });
+            }
+            logClickDiag({
+              ...meta,
+              existingClientFound: true,
+              navigateSucceeded: false,
+              openWindowFallbackUsed: true,
+            });
+            if (self.clients.openWindow) {
+              return self.clients.openWindow(absoluteUrl);
+            }
+            if ("focus" in preferred) {
+              return preferred.focus();
+            }
+            return preferred;
+          });
+      }
+
+      logClickDiag({
+        ...meta,
+        existingClientFound: false,
+        openWindowFallbackUsed: true,
+      });
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(absoluteUrl);
+      }
+      return undefined;
+    });
 }
 
 self.addEventListener("push", (event) => {
@@ -85,31 +186,39 @@ self.addEventListener("push", (event) => {
     body: "You have a new notification.",
     tag: "lifeos-fallback",
     url: "/today",
+    legacy: true,
   };
 
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
-      data: { url: payload.url },
+      data: {
+        version: 1,
+        notificationType: payload.notificationType,
+        destination: payload.destination,
+        url: payload.url,
+        legacy: payload.legacy,
+      },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = sanitizeUrl(event.notification.data && event.notification.data.url);
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ("focus" in client) {
-          client.navigate(url);
-          return client.focus();
-        }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
-      }
-    }),
-  );
+
+  const data = event.notification.data || {};
+  const path = Dest.resolvePathFromPushData(data);
+  const absoluteUrl = toAbsoluteUrl(path);
+  const meta = {
+    notificationType: data.notificationType,
+    destinationKind:
+      data.destination && typeof data.destination === "object"
+        ? data.destination.kind
+        : undefined,
+    legacyPayload: Boolean(data.legacy) || !data.destination,
+    destinationValidationFailed: path === "/today" && Boolean(data.destination),
+  };
+
+  event.waitUntil(openOrFocusClient(absoluteUrl, path, meta));
 });

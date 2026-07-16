@@ -17,6 +17,7 @@ import { getLifeOSPlanningCalendar } from "@/lib/data/calendars";
 import { getPlanningPreferences } from "@/lib/data/preferences";
 import { toPlanningEvent, toPlanningTask } from "@/lib/planning/mappers";
 import { validateProposalForAcceptance } from "@/lib/planning/proposal-validation";
+import { sumTrackedSecondsByTaskIds } from "@/lib/data/time-entries";
 import {
   acceptProposalsSchema,
   proposalIdSchema,
@@ -92,13 +93,17 @@ async function validateBeforeAccept(
 ): Promise<{ valid: true } | { valid: false; reason: string }> {
   const user = await requireAllowedUser();
   const calendar = await getLifeOSPlanningCalendar();
-  const [events, tasks, preferences] = await Promise.all([
-    listEventsInRange(
-      proposal.proposed_start_at,
-      proposal.proposed_end_at,
-    ),
+  const preferences = await getPlanningPreferences();
+  const bufferMs = (preferences.travel_buffer_minutes ?? 0) * 60_000;
+  const rangeStart = new Date(
+    new Date(proposal.proposed_start_at).getTime() - bufferMs,
+  ).toISOString();
+  const rangeEnd = new Date(
+    new Date(proposal.proposed_end_at).getTime() + bufferMs,
+  ).toISOString();
+  const [events, tasks] = await Promise.all([
+    listEventsInRange(rangeStart, rangeEnd),
     listTasks({ status: "active", sort: "due_date" }),
-    getPlanningPreferences(),
   ]);
 
   const supabase = await createClient();
@@ -114,6 +119,14 @@ async function validateBeforeAccept(
   }
 
   const task = tasks.find((t) => t.id === proposal.task_id) ?? null;
+  let planningTask = task ? toPlanningTask(task) : null;
+  if (planningTask) {
+    const tracked = await sumTrackedSecondsByTaskIds([planningTask.id]);
+    planningTask = {
+      ...planningTask,
+      trackedMinutes: Math.round((tracked.get(planningTask.id) ?? 0) / 60),
+    };
+  }
 
   const validation = validateProposalForAcceptance({
     proposal: {
@@ -127,7 +140,7 @@ async function validateBeforeAccept(
       planningRunId: proposal.planning_run_id,
     },
     run: { id: run.id, status: run.status },
-    task: task ? toPlanningTask(task) : null,
+    task: planningTask,
     events: events.map(toPlanningEvent),
     preferences: {
       minimumBreakMinutes: preferences.minimum_break_minutes,

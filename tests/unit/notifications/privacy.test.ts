@@ -13,14 +13,25 @@ describe("notification destination privacy", () => {
   });
 
   it("rejects internal routes outside the allowlist", () => {
-    expect(isAllowedNotificationRoute("/imports")).toBe(false);
-    expect(sanitizeNotificationUrl("/imports?next=/today")).toBe("/today");
+    expect(isAllowedNotificationRoute("/admin")).toBe(false);
+    expect(sanitizeNotificationUrl("/admin?next=/today")).toBe("/today");
   });
 
-  it("accepts only approved internal routes", () => {
-    for (const route of ["/today", "/week", "/tasks", "/settings"] as const) {
+  it("accepts approved internal routes including review and calendar", () => {
+    for (const route of [
+      "/today",
+      "/week",
+      "/tasks",
+      "/settings",
+      "/review/daily",
+      "/review/weekly",
+      "/calendar",
+    ] as const) {
       expect(isAllowedNotificationRoute(route)).toBe(true);
       expect(sanitizeNotificationUrl(route)).toBe(route);
     }
+    expect(
+      sanitizeNotificationUrl("/review/daily?period=evening"),
+    ).toBe("/review/daily?period=evening");
   });
 });

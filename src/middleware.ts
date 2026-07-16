@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { parseMiddlewareEnv } from "@/lib/security/middleware-env";
+import { sanitizeInternalReturnPath } from "@/lib/notifications/destination";
 
 const DASHBOARD_PATHS = [
   "/today",
@@ -14,8 +15,10 @@ const DASHBOARD_PATHS = [
   "/settings",
   "/imports",
   "/events",
-  "/work",
   "/assistant",
+  "/review",
+  "/inbox",
+  "/status",
 ];
 
 export function shouldRunMiddleware(pathname: string): boolean {
@@ -28,6 +31,7 @@ export function shouldRunMiddleware(pathname: string): boolean {
   if (normalized === "/offline.html") return false;
   if (normalized === "/manifest.webmanifest") return false;
   if (normalized === "/sw.js") return false;
+  if (normalized === "/lifeos-notification-destinations.js") return false;
 
   return true;
 }
@@ -103,7 +107,9 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/login" && user) {
     if (user.email?.toLowerCase() === allowedEmail) {
-      return NextResponse.redirect(new URL("/today", request.url));
+      const nextParam = request.nextUrl.searchParams.get("next");
+      const safeNext = sanitizeInternalReturnPath(nextParam ?? "/today");
+      return NextResponse.redirect(new URL(safeNext, request.url));
     }
   }
 
@@ -116,7 +122,8 @@ export async function middleware(request: NextRequest) {
     }
 
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
+    const returnPath = `${pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set("next", sanitizeInternalReturnPath(returnPath));
     return NextResponse.redirect(loginUrl);
   }
 
@@ -147,6 +154,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|icons/|offline.html|manifest.webmanifest|sw.js).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|icons/|offline.html|manifest.webmanifest|sw.js|lifeos-notification-destinations.js).*)",
   ],
 };

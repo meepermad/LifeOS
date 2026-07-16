@@ -71,10 +71,14 @@ describe("notification payloads", () => {
 
   it("malformed serialized payload uses safe fallback fields in test payload", () => {
     const test = buildTestPayload();
-    expect(test.url).toBe("/settings");
+    expect(test.url).toBe("/settings?section=notifications");
+    expect(test.destination).toEqual({ kind: "notification_settings" });
     const fallback = buildFallbackPayload();
     expect(fallback.url).toBe("/today");
     const serialized = serializePayload(test);
-    expect(JSON.parse(serialized).url).toBe("/settings");
+    const parsed = JSON.parse(serialized);
+    expect(parsed.url).toBe("/settings?section=notifications");
+    expect(parsed.version).toBe(1);
+    expect(parsed.destination.kind).toBe("notification_settings");
   });
 });

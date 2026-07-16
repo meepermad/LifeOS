@@ -16,11 +16,14 @@ export function TaskListItem({
   task,
   atRisk = false,
   focusSummary,
+  focused = false,
 }: {
   task: TaskRow;
   atRisk?: boolean;
   focusSummary?: TaskFocusScheduleSummary;
-}) {  const router = useRouter();
+  focused?: boolean;
+}) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [reviewOpen, setReviewOpen] = useState(false);
   const overdue = task.due_at ? isOverdue(task.due_at) : false;
@@ -47,7 +50,12 @@ export function TaskListItem({
   }
 
   return (
-    <article className="rounded-xl border border-border bg-surface p-4">
+    <article
+      data-focus-id={task.id}
+      className={`rounded-xl border bg-surface p-4 ${
+        focused ? "border-accent ring-2 ring-accent" : "border-border"
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <Link

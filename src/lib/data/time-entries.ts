@@ -363,22 +363,48 @@ export async function deleteTimeEntry(entryId: string): Promise<void> {
 }
 
 export async function sumTrackedSecondsForTask(taskId: string): Promise<number> {
+  const totals = await sumTrackedSecondsByTaskIds([taskId]);
+  return totals.get(taskId) ?? 0;
+}
+
+/**
+ * Bulk-hydrate reviewed tracked seconds for many tasks (Phase 12.1 authority).
+ * Counts only valid/corrected entries; one query (chunked if needed).
+ */
+export async function sumTrackedSecondsByTaskIds(
+  taskIds: string[],
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (taskIds.length === 0) return result;
+
   const user = await requireAllowedUser();
   const supabase = await createClient();
+  const CHUNK = 200;
 
-  const { data, error } = await supabase
-    .from("task_time_entries")
-    .select("duration_seconds, review_state")
-    .eq("user_id", user.id)
-    .eq("task_id", taskId)
-    .not("duration_seconds", "is", null)
-    .in("review_state", ["valid", "corrected"]);
+  for (let i = 0; i < taskIds.length; i += CHUNK) {
+    const chunk = taskIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("task_time_entries")
+      .select("task_id, duration_seconds, review_state")
+      .eq("user_id", user.id)
+      .in("task_id", chunk)
+      .not("duration_seconds", "is", null)
+      .in("review_state", ["valid", "corrected"]);
 
-  if (error) {
-    throw new DatabaseError("Failed to sum tracked time");
+    if (error) {
+      throw new DatabaseError("Failed to sum tracked time");
+    }
+
+    for (const row of data ?? []) {
+      if (!row.task_id) continue;
+      result.set(
+        row.task_id,
+        (result.get(row.task_id) ?? 0) + (row.duration_seconds ?? 0),
+      );
+    }
   }
 
-  return (data ?? []).reduce((sum, row) => sum + (row.duration_seconds ?? 0), 0);
+  return result;
 }
 
 export async function listEntriesForRange(

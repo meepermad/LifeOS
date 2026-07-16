@@ -60,6 +60,7 @@ export function PersistentTimerBar() {
 
   return (
     <div
+      data-persistent-timer
       className="safe-bottom fixed inset-x-0 bottom-16 z-50 border-t border-border bg-surface-elevated/95 px-4 py-2 backdrop-blur-md lg:bottom-0 lg:left-56"
       role="status"
       aria-live="polite"

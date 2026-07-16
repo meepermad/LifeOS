@@ -23,6 +23,8 @@ import { getAcademicBlockingEvents } from "@/lib/academic/planning-blocks";
 import { generatePlanningProposals } from "@/lib/planning/proposal-generator";
 import { computePlanningInputHash } from "@/lib/planning/proposal-hash";
 import { getDailyPriorities, getWeeklyPriorities } from "@/lib/data/reviews";
+import { sumTrackedSecondsByTaskIds } from "@/lib/data/time-entries";
+import { getUnscheduledRemainingWorkMinutes } from "@/lib/planning/remaining-work-math";
 import type {
   FocusBlockProposal,
   PlanningGenerationResult,
@@ -148,6 +150,9 @@ export async function loadPlanningInputs(
   const calibrationContext = await loadCalibrationContext(
     preferences.calibration_reset_at,
   );
+  const trackedByTask = await sumTrackedSecondsByTaskIds(
+    tasks.map((task) => task.id),
+  );
   const calibratedTasks = applyCalibrationToPlanningTasks(
     tasks,
     preferences,
@@ -156,6 +161,7 @@ export async function loadPlanningInputs(
     ...task,
     isDailyPriority: dailyPriorityIds.has(task.id),
     isWeeklyPriority: weeklyPriorityIds.has(task.id),
+    trackedMinutes: Math.round((trackedByTask.get(task.id) ?? 0) / 60),
   }));
 
   const base = buildProposalInputs({
@@ -508,9 +514,15 @@ export async function getTaskFocusScheduleSummaries(
     );
   }
 
+  const trackedByTask = await sumTrackedSecondsByTaskIds(taskIds);
+
   for (const task of tasks) {
     const focusBlocks = byTask.get(task.id) ?? [];
-    const remaining = task.remaining_minutes ?? task.estimated_minutes;
+    const trackedMinutes = Math.round((trackedByTask.get(task.id) ?? 0) / 60);
+    const planningTask = {
+      ...toPlanningTask(task),
+      trackedMinutes,
+    };
 
     let futureScheduledFocusMinutes = 0;
     for (const block of focusBlocks) {
@@ -522,20 +534,22 @@ export async function getTaskFocusScheduleSummaries(
       futureScheduledFocusMinutes += minutes;
     }
 
-    futureScheduledFocusMinutes += pendingMinutesByTask.get(task.id) ?? 0;
+    const pendingMinutes = pendingMinutesByTask.get(task.id) ?? 0;
+    futureScheduledFocusMinutes += pendingMinutes;
 
-    const unscheduledRemainingMinutes =
-      remaining != null
-        ? Math.max(0, remaining - futureScheduledFocusMinutes)
-        : 0;
+    const unscheduledRemainingMinutes = getUnscheduledRemainingWorkMinutes(
+      planningTask,
+      futureScheduledFocusMinutes - pendingMinutes,
+      pendingMinutes,
+    );
 
     const next = focusBlocks[0];
 
     result.set(task.id, {
       taskId: task.id,
-      remainingMinutes: remaining,
+      remainingMinutes: getUnscheduledRemainingWorkMinutes(planningTask, 0, 0),
       futureScheduledFocusMinutes,
-      unscheduledRemainingMinutes,
+      unscheduledRemainingMinutes: unscheduledRemainingMinutes ?? 0,
       nextFocusBlock: next
         ? {
             id: next.id,

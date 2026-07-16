@@ -1,4 +1,5 @@
 import { TodayView } from "@/components/today/today-view";
+import { ActiveTimerPanelNotice } from "@/components/timer/active-timer-panel-notice";
 import {
   getNextUpcomingEvent,
   listTodayEvents,
@@ -37,7 +38,12 @@ function buildRelatedTasksByEventId(tasks: TaskRow[]): Map<string, RelatedCanvas
   return map;
 }
 
-export default async function TodayPage() {
+type TodayPageProps = {
+  searchParams: Promise<{ panel?: string; entry?: string }>;
+};
+
+export default async function TodayPage({ searchParams }: TodayPageProps) {
+  const params = await searchParams;
   let eventsError: string | null = null;
   let tasksError: string | null = null;
   let workloadError: string | null = null;
@@ -144,25 +150,28 @@ export default async function TodayPage() {
   }
 
   return (
-    <TodayView
-      events={events}
-      dueToday={dueToday}
-      overdue={overdue}
-      allocatedToday={allocatedToday}
-      nextEvent={nextEvent}
-      workload={workload}
-      canvasTasksNeedingEstimates={canvasTasksNeedingEstimates}
-      relatedTasksByEventId={relatedTasksByEventId}
-      planningRun={planningRun}
-      eventsError={eventsError}
-      tasksError={tasksError}
-      workloadError={workloadError}
-      planningError={planningError}
-      academicBreakTitle={academicBreakTitle}
-      reviewPrompt={reviewPrompt}
-      dailyPriorities={dailyPriorities}
-      inboxCount={inboxCount}
-      awaitingFeedbackCount={awaitingFeedbackCount}
-    />
+    <>
+      <ActiveTimerPanelNotice panel={params.panel} />
+      <TodayView
+        events={events}
+        dueToday={dueToday}
+        overdue={overdue}
+        allocatedToday={allocatedToday}
+        nextEvent={nextEvent}
+        workload={workload}
+        canvasTasksNeedingEstimates={canvasTasksNeedingEstimates}
+        relatedTasksByEventId={relatedTasksByEventId}
+        planningRun={planningRun}
+        eventsError={eventsError}
+        tasksError={tasksError}
+        workloadError={workloadError}
+        planningError={planningError}
+        academicBreakTitle={academicBreakTitle}
+        reviewPrompt={reviewPrompt}
+        dailyPriorities={dailyPriorities}
+        inboxCount={inboxCount}
+        awaitingFeedbackCount={awaitingFeedbackCount}
+      />
+    </>
   );
 }

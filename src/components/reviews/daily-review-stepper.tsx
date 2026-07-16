@@ -83,8 +83,12 @@ function clampStep(index: number, length: number): number {
 
 export function DailyReviewStepper({
   context,
+  initialStepIndex,
+  focusBlockId = null,
 }: {
   context: MorningReviewContext | EveningReviewContext;
+  initialStepIndex?: number;
+  focusBlockId?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -94,7 +98,7 @@ export function DailyReviewStepper({
       ? MORNING_REVIEW_STEPS
       : EVENING_REVIEW_STEPS;
   const initialStep = clampStep(
-    context.session?.current_step ?? 0,
+    initialStepIndex ?? context.session?.current_step ?? 0,
     steps.length,
   );
   const [stepIndex, setStepIndex] = useState(initialStep);
@@ -439,12 +443,36 @@ export function DailyReviewStepper({
 
       {context.period === "evening" && currentStep?.id === "feedback" && (
         <SectionCard title="Planning blocks needing feedback">
+          {focusBlockId &&
+          !context.awaitingFeedback.some((b) => b.eventId === focusBlockId) ? (
+            <p className="mb-3 text-sm text-muted">
+              This planning block is no longer awaiting feedback.
+            </p>
+          ) : null}
           {context.awaitingFeedback.length === 0 ? (
             <EmptyState message="No planning blocks need feedback." />
           ) : (
             <ul className="space-y-2">
-              {context.awaitingFeedback.map((block) => (
-                <li key={block.eventId}>
+              {(focusBlockId
+                ? [
+                    ...context.awaitingFeedback.filter(
+                      (b) => b.eventId === focusBlockId,
+                    ),
+                    ...context.awaitingFeedback.filter(
+                      (b) => b.eventId !== focusBlockId,
+                    ),
+                  ]
+                : context.awaitingFeedback
+              ).map((block) => (
+                <li
+                  key={block.eventId}
+                  data-focus-id={block.eventId}
+                  className={
+                    focusBlockId === block.eventId
+                      ? "rounded-lg ring-2 ring-accent p-2"
+                      : undefined
+                  }
+                >
                   <Link
                     href={`/calendar`}
                     className="block truncate text-sm text-foreground hover:text-accent"

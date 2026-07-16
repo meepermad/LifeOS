@@ -8,6 +8,7 @@ import { StaleTimerBanner } from "@/components/timer/stale-timer-banner";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { CommandPaletteProvider } from "@/components/search/command-palette-provider";
 import { HeaderSearchButton } from "@/components/search/header-search-button";
+import { NotificationNavigateListener } from "@/components/notifications/notification-navigate-listener";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="safe-top min-h-dvh bg-background">
+      <NotificationNavigateListener />
       <DesktopSidebar />
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md lg:pl-56">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3 lg:max-w-6xl xl:max-w-7xl">

@@ -4,6 +4,7 @@ import {
   subtractIntervals,
   toInterval,
 } from "@/lib/planning/intervals";
+import { findBlockingConflict } from "@/lib/planning/blocking-overlap";
 import { matchesProposalHash } from "@/lib/planning/proposal-hash";
 import { getUnscheduledRemainingWorkMinutes } from "@/lib/planning/remaining-work-math";
 import { getTaskWorkloadMinutes } from "@/lib/planning/task-allocation";
@@ -13,16 +14,6 @@ import type {
   ProposalValidationContext,
 } from "@/lib/planning/types";
 import { ACTIVE_TASK_STATUSES } from "@/lib/planning/types";
-
-function isBlockingOverlapEvent(event: PlanningEvent): boolean {
-  if (event.status === "cancelled" || event.status === "tentative") {
-    return false;
-  }
-  if (event.eventType === "deadline" || !event.blocksTime) {
-    return false;
-  }
-  return true;
-}
 
 export function getFutureConfirmedFocusMinutesForTask(
   task: PlanningTask,
@@ -61,8 +52,16 @@ export function getUnscheduledRemainingMinutes(
 export function validateProposalForAcceptance(
   context: ProposalValidationContext,
 ): { valid: true } | { valid: false; reason: string; shouldMarkStale: true } {
-  const { proposal, run, task, events, calendarWritable, userId, ownerUserId } =
-    context;
+  const {
+    proposal,
+    run,
+    task,
+    events,
+    preferences,
+    calendarWritable,
+    userId,
+    ownerUserId,
+  } = context;
 
   if (userId !== ownerUserId) {
     return {
@@ -148,18 +147,23 @@ export function validateProposalForAcceptance(
 
   const startMs = new Date(proposal.proposedStartAt).getTime();
   const endMs = new Date(proposal.proposedEndAt).getTime();
+  const travelBufferMinutes = preferences.travelBufferMinutes ?? 0;
 
-  for (const event of events) {
-    if (!isBlockingOverlapEvent(event)) continue;
-    const eventStart = new Date(event.startAt).getTime();
-    const eventEnd = new Date(event.endAt).getTime();
-    if (eventStart < endMs && eventEnd > startMs) {
-      return {
-        valid: false,
-        reason: "The calendar changed and this time slot is no longer open.",
-        shouldMarkStale: true,
-      };
-    }
+  const conflict = findBlockingConflict(
+    events,
+    proposal.proposedStartAt,
+    proposal.proposedEndAt,
+    travelBufferMinutes,
+  );
+  if (conflict) {
+    return {
+      valid: false,
+      reason:
+        travelBufferMinutes > 0
+          ? "The calendar changed or a required travel buffer is no longer available for this time slot."
+          : "The calendar changed and this time slot is no longer open.",
+      shouldMarkStale: true,
+    };
   }
 
   if (task.earliestStartAt && startMs < new Date(task.earliestStartAt).getTime()) {
@@ -189,16 +193,11 @@ export function eventsOverlapInterval(
   events: PlanningEvent[],
   startAt: string,
   endAt: string,
+  travelBufferMinutes = 0,
 ): boolean {
-  const startMs = new Date(startAt).getTime();
-  const endMs = new Date(endAt).getTime();
-
-  return events.some((event) => {
-    if (!isBlockingOverlapEvent(event)) return false;
-    const eventStart = new Date(event.startAt).getTime();
-    const eventEnd = new Date(event.endAt).getTime();
-    return eventStart < endMs && eventEnd > startMs;
-  });
+  return (
+    findBlockingConflict(events, startAt, endAt, travelBufferMinutes) != null
+  );
 }
 
 export function shrinkIntervalsForBreaks(

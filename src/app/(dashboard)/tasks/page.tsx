@@ -1,15 +1,27 @@
 import Link from "next/link";
 import { TaskListItem } from "@/components/tasks/task-list-item";
+import { TasksFocusClient } from "@/components/tasks/tasks-focus-client";
 import { getTaskFocusScheduleSummaries } from "@/lib/data/planning";
-import { listTasks, type TaskFilter, type TaskSort } from "@/lib/data/tasks";
+import {
+  getTaskById,
+  listTasks,
+  type TaskFilter,
+  type TaskSort,
+} from "@/lib/data/tasks";
 import { getTasksAtRiskIds } from "@/lib/data/workload";
-import type { TaskStatus } from "@/types/domain";
+import {
+  inferTaskViewFromTask,
+  mapTaskViewToFilter,
+} from "@/lib/notifications/deep-links";
+import type { TaskRow, TaskStatus } from "@/types/domain";
 
 type TasksPageProps = {
   searchParams: Promise<{
     status?: string;
     sort?: string;
     filter?: string;
+    view?: string;
+    focus?: string;
   }>;
 };
 
@@ -27,11 +39,44 @@ const WORKLOAD_FILTERS: { value: TaskFilter; label: string }[] = [
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams;
-  const status = (params.status ?? "active") as TaskStatus | "active" | "all";
   const sort = (params.sort ?? "due_date") as TaskSort;
-  const filter = params.filter as TaskFilter | undefined;
+  const focusId =
+    typeof params.focus === "string" && params.focus.length > 0
+      ? params.focus
+      : null;
+
+  let focusTask: TaskRow | null = null;
+  let focusUnavailable = false;
+  if (focusId) {
+    try {
+      focusTask = await getTaskById(focusId);
+    } catch {
+      focusUnavailable = true;
+      focusTask = null;
+    }
+  }
+
+  const viewFromFocus = focusTask ? inferTaskViewFromTask(focusTask) : null;
+  const requestedView = params.view;
+  const filterFromView = mapTaskViewToFilter(
+    focusTask ? viewFromFocus ?? requestedView : requestedView,
+  );
+  const filter =
+    (params.filter as TaskFilter | undefined) ?? filterFromView ?? undefined;
+
+  const status = (
+    focusTask?.status === "completed"
+      ? "completed"
+      : (params.status ?? "active")
+  ) as TaskStatus | "active" | "all";
+
   const atRiskIds = filter === "at_risk" ? await getTasksAtRiskIds() : undefined;
-  const tasks = await listTasks({ status, sort, filter, atRiskIds });
+  let tasks = await listTasks({ status, sort, filter, atRiskIds });
+
+  if (focusTask && !tasks.some((t) => t.id === focusTask!.id)) {
+    tasks = [focusTask, ...tasks];
+  }
+
   const focusSummaries =
     status === "active" || status === "open" || status === "in_progress"
       ? await getTaskFocusScheduleSummaries(tasks)
@@ -61,6 +106,17 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           + Task
         </Link>
       </div>
+
+      {focusUnavailable ? (
+        <p
+          role="status"
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted"
+        >
+          This item is no longer available.
+        </p>
+      ) : null}
+
+      <TasksFocusClient focusId={focusUnavailable ? null : focusId} />
 
       <div className="flex flex-wrap gap-2">
         {[
@@ -143,8 +199,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               task={task}
               atRisk={atRiskIds?.has(task.id)}
               focusSummary={focusSummaries.get(task.id)}
+              focused={focusId === task.id}
             />
-          ))}        </div>
+          ))}
+        </div>
       )}
     </div>
   );

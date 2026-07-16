@@ -18,12 +18,18 @@ import { SectionCard } from "@/components/forms/ui";
 import { ShortcutDeviceSettings } from "@/components/settings/shortcut-device-settings";
 import { AssistantLanguageFallbackSettings } from "@/components/settings/assistant-language-fallback-settings";
 import { ExportCenter } from "@/components/settings/export-center";
+import { SettingsSectionFocus } from "@/components/settings/settings-section-focus";
 import { listShortcutDevices } from "@/lib/data/shortcut-devices";
 import { getServerEnv } from "@/lib/security/env";
 import { getAiIntentRouterStatus } from "@/lib/assistant/ai-intent-router/router";
 import { getAppVersionLabel } from "@/lib/status/system-status";
 
-export default async function SettingsPage() {
+type SettingsPageProps = {
+  searchParams: Promise<{ section?: string }>;
+};
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
+  const params = await searchParams;
   const user = await requireAllowedUser();
   const microsoftEnabled = isMicrosoftIntegrationEnabled();
   const [profile, preferences, calendars, availabilityRules, canvasConnection, devices, shortcutDevices] =
@@ -46,6 +52,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <SettingsSectionFocus section={params.section} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted">
@@ -99,16 +106,18 @@ export default async function SettingsPage() {
         <AvailabilitySettings rules={availabilityRules} />
       </SectionCard>
 
-      <SectionCard
-        title="Notifications"
-        description="Web Push alerts for daily plans, weekly outlook, and workload warnings."
-      >
-        <NotificationSettings
-          preferences={preferences}
-          devices={devices}
-          vapidPublicKey={vapidPublicKey}
-        />
-      </SectionCard>
+      <div id="settings-notifications" className="rounded-xl">
+        <SectionCard
+          title="Notifications"
+          description="Web Push alerts for daily plans, weekly outlook, and workload warnings."
+        >
+          <NotificationSettings
+            preferences={preferences}
+            devices={devices}
+            vapidPublicKey={vapidPublicKey}
+          />
+        </SectionCard>
+      </div>
 
       <SectionCard title="Planning preferences">
         <PlanningPreferencesForm

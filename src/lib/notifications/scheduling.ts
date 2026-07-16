@@ -37,8 +37,8 @@ import {
   fetchDeadlineTasks,
 } from "@/lib/notifications/workload-admin";
 import {
-  countAwaitingPlanningFeedback,
-  countOverdueNeedingDecision,
+  listAwaitingPlanningFeedback,
+  listOverdueNeedingDecision,
   listWaitingFollowupsDue,
   hasCompletedReviewSession,
 } from "@/lib/notifications/workflow-queries";
@@ -672,6 +672,7 @@ export async function processScheduledNotifications(
       if (tasks.length === 0) {
         result.noContent += 1;
       } else {
+        const singleTask = tasks.length === 1 ? tasks[0] : undefined;
         const sendResult = await sendNotificationToUser(client, {
           userId,
           notificationType: "deadline_warning",
@@ -679,6 +680,12 @@ export async function processScheduledNotifications(
             tasks.length,
             warningHours,
             privacyMode,
+            singleTask
+              ? {
+                  taskId: singleTask.id,
+                  overdue: new Date(singleTask.due_at!).getTime() < now.getTime(),
+                }
+              : undefined,
           ),
           deduplicationKey: dedupKey,
           scheduledFor: processingInstant,
@@ -766,7 +773,9 @@ export async function processScheduledNotifications(
       const sendResult = await sendNotificationToUser(client, {
         userId,
         notificationType: "waiting_followup",
-        payload: buildWaitingFollowupPayload(1, privacyMode),
+        payload: buildWaitingFollowupPayload(1, privacyMode, {
+          taskId: task.id,
+        }),
         deduplicationKey: dedupKey,
         scheduledFor: task.waiting_follow_up_at,
         payloadSummary: { taskCount: 1 },
@@ -782,14 +791,17 @@ export async function processScheduledNotifications(
       result.deduplicated += 1;
       result.skipped += 1;
     } else {
-      const taskCount = await countOverdueNeedingDecision(client, userId, now);
+      const overdueIds = await listOverdueNeedingDecision(client, userId, now);
+      const taskCount = overdueIds.length;
       if (taskCount === 0) {
         result.noContent += 1;
       } else {
         const sendResult = await sendNotificationToUser(client, {
           userId,
           notificationType: "overdue_decision",
-          payload: buildOverdueDecisionPayload(taskCount, privacyMode),
+          payload: buildOverdueDecisionPayload(taskCount, privacyMode, {
+            taskId: taskCount === 1 ? overdueIds[0] : undefined,
+          }),
           deduplicationKey: dedupKey,
           scheduledFor: processingInstant,
           payloadSummary: { taskCount },
@@ -806,18 +818,17 @@ export async function processScheduledNotifications(
       result.deduplicated += 1;
       result.skipped += 1;
     } else {
-      const blockCount = await countAwaitingPlanningFeedback(
-        client,
-        userId,
-        now,
-      );
+      const blockIds = await listAwaitingPlanningFeedback(client, userId, now);
+      const blockCount = blockIds.length;
       if (blockCount === 0) {
         result.noContent += 1;
       } else {
         const sendResult = await sendNotificationToUser(client, {
           userId,
           notificationType: "planning_feedback",
-          payload: buildPlanningFeedbackPayload(blockCount, privacyMode),
+          payload: buildPlanningFeedbackPayload(blockCount, privacyMode, {
+            planningBlockId: blockCount === 1 ? blockIds[0] : undefined,
+          }),
           deduplicationKey: dedupKey,
           scheduledFor: processingInstant,
           payloadSummary: { blockCount },
@@ -856,6 +867,7 @@ export async function processScheduledNotifications(
           activeTimer.task_title_snapshot,
           thresholdHours,
           privacyMode,
+          { timeEntryId: activeTimer.id },
         ),
         deduplicationKey: dedupKey,
         scheduledFor: activeTimer.started_at,

@@ -5,9 +5,14 @@ import {
   loadMorningContext,
 } from "@/lib/reviews/loaders";
 import { formatAppDate, nowInAppTimezone } from "@/lib/dates/timezone";
+import { resolveDailyReviewStepIndex } from "@/lib/notifications/deep-links";
 
 type DailyReviewPageProps = {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{
+    period?: string;
+    step?: string;
+    focus?: string;
+  }>;
 };
 
 export default async function DailyReviewPage({
@@ -26,6 +31,16 @@ export default async function DailyReviewPage({
       : await loadEveningContext();
 
   const today = nowInAppTimezone();
+  const fallbackStep = context.session?.current_step ?? 0;
+  const initialStepIndex = resolveDailyReviewStepIndex(
+    period,
+    params.step,
+    fallbackStep,
+  );
+  const focusBlockId =
+    typeof params.focus === "string" && params.focus.length > 0
+      ? params.focus
+      : null;
 
   return (
     <div className="space-y-6">
@@ -40,7 +55,9 @@ export default async function DailyReviewPage({
           <a
             href="/review/daily?period=morning"
             className={
-              period === "morning" ? "text-accent" : "text-muted hover:text-foreground"
+              period === "morning"
+                ? "text-accent"
+                : "text-muted hover:text-foreground"
             }
           >
             Morning
@@ -48,7 +65,9 @@ export default async function DailyReviewPage({
           <a
             href="/review/daily?period=evening"
             className={
-              period === "evening" ? "text-accent" : "text-muted hover:text-foreground"
+              period === "evening"
+                ? "text-accent"
+                : "text-muted hover:text-foreground"
             }
           >
             Evening
@@ -56,7 +75,11 @@ export default async function DailyReviewPage({
         </div>
       </div>
 
-      <DailyReviewStepper context={context} />
+      <DailyReviewStepper
+        context={context}
+        initialStepIndex={initialStepIndex}
+        focusBlockId={focusBlockId}
+      />
     </div>
   );
 }

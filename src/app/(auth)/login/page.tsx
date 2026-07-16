@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
+import { sanitizeInternalReturnPath } from "@/lib/notifications/destination";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -9,7 +10,7 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const nextPath = params.next?.startsWith("/") ? params.next : "/today";
+  const nextPath = sanitizeInternalReturnPath(params.next ?? "/today");
   const initialError =
     params.error === "unauthorized"
       ? "This account is not authorized to access LifeOS."

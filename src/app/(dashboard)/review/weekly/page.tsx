@@ -1,9 +1,14 @@
 import { WeeklyReviewStepper } from "@/components/reviews/weekly-review-stepper";
 import { loadWeeklyContext } from "@/lib/reviews/loaders";
 import { formatAppDate } from "@/lib/dates/timezone";
+import { resolveWeeklyReviewStepIndex } from "@/lib/notifications/deep-links";
 
 type WeeklyReviewPageProps = {
-  searchParams: Promise<{ offset?: string }>;
+  searchParams: Promise<{
+    offset?: string;
+    step?: string;
+    weekStart?: string;
+  }>;
 };
 
 export default async function WeeklyReviewPage({
@@ -12,6 +17,11 @@ export default async function WeeklyReviewPage({
   const params = await searchParams;
   const weekOffset = Number(params.offset ?? 0) || 0;
   const context = await loadWeeklyContext(weekOffset);
+  const fallbackStep = context.session?.current_step ?? 0;
+  const initialStepIndex = resolveWeeklyReviewStepIndex(
+    params.step,
+    fallbackStep,
+  );
 
   return (
     <div className="space-y-6">
@@ -22,7 +32,11 @@ export default async function WeeklyReviewPage({
         </p>
       </div>
 
-      <WeeklyReviewStepper context={context} weekOffset={weekOffset} />
+      <WeeklyReviewStepper
+        context={context}
+        weekOffset={weekOffset}
+        initialStepIndex={initialStepIndex}
+      />
     </div>
   );
 }

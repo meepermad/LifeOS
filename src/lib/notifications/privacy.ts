@@ -1,32 +1,19 @@
-const ALLOWED_NOTIFICATION_ROUTES = [
-  "/today",
-  "/week",
-  "/tasks",
-  "/settings",
-  "/chat",
-  "/inbox",
-  "/review/daily",
-  "/review/weekly",
-] as const;
+import {
+  ALLOWED_ROUTE_PREFIXES,
+  resolveNotificationDestination,
+  resolvePathFromPushData,
+  sanitizeInternalReturnPath,
+} from "@/lib/notifications/destination";
 
-export type AllowedNotificationRoute =
-  (typeof ALLOWED_NOTIFICATION_ROUTES)[number];
+export type AllowedNotificationRoute = (typeof ALLOWED_ROUTE_PREFIXES)[number];
 
-export function isAllowedNotificationRoute(
-  url: string,
-): url is AllowedNotificationRoute {
-  if (!url.startsWith("/")) return false;
-  if (url.includes("://") || url.startsWith("//")) return false;
-  const path = url.split("?")[0]?.split("#")[0] ?? url;
-  if (path === "/chat") return true;
-  return (ALLOWED_NOTIFICATION_ROUTES as readonly string[]).includes(path);
+export function isAllowedNotificationRoute(url: string): boolean {
+  if (typeof url !== "string") return false;
+  return sanitizeInternalReturnPath(url) === url;
 }
 
-export function sanitizeNotificationUrl(url: string): AllowedNotificationRoute {
-  if (isAllowedNotificationRoute(url)) {
-    return url;
-  }
-  return "/today";
+export function sanitizeNotificationUrl(url: string): string {
+  return sanitizeInternalReturnPath(url);
 }
 
 export function containsSensitiveContent(text: string): boolean {
@@ -41,3 +28,9 @@ export function containsSensitiveContent(text: string): boolean {
   ];
   return sensitivePatterns.some((pattern) => pattern.test(text));
 }
+
+export {
+  resolveNotificationDestination,
+  resolvePathFromPushData,
+  sanitizeInternalReturnPath,
+};

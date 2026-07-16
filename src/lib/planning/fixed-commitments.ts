@@ -3,6 +3,7 @@ import {
   buildAvailabilityIntervalsForDay,
   hasEnabledAvailabilityForDay,
 } from "@/lib/planning/availability";
+import { isBlockingEvent } from "@/lib/planning/blocking-overlap";
 import {
   clipIntervals,
   dayBoundsInterval,
@@ -18,22 +19,7 @@ import type {
   PlanningPreferences,
   TimeInterval,
 } from "@/lib/planning/types";
-import {
-  BLOCKING_EVENT_TYPES,
-  TRAVEL_BUFFER_EVENT_TYPES,
-} from "@/lib/planning/types";
-
-function isBlockingEvent(event: PlanningEvent): boolean {
-  if (event.status === "cancelled" || event.status === "tentative") {
-    return false;
-  }
-
-  if (event.eventType === "deadline" || !event.blocksTime) {
-    return false;
-  }
-
-  return BLOCKING_EVENT_TYPES.includes(event.eventType);
-}
+import { TRAVEL_BUFFER_EVENT_TYPES } from "@/lib/planning/types";
 
 function buildTimedBlockingIntervals(
   events: PlanningEvent[],

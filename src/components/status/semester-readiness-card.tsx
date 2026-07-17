@@ -7,6 +7,12 @@ import { SectionCard } from "@/components/forms/ui";
 
 const DISMISS_KEY = "lifeos:readiness-dismissed";
 
+function statusGlyph(check: ReadinessCheck): string {
+  if (check.ok) return "✅";
+  if (check.severity === "warning") return "⚠";
+  return "❌";
+}
+
 export function SemesterReadinessCard({
   checks,
   forceShow = false,
@@ -42,33 +48,62 @@ export function SemesterReadinessCard({
   return (
     <SectionCard
       title="Semester readiness"
-      description="Automatically derived setup checks. Dismiss items that do not apply."
+      description="Setup diagnostics with clear next steps. Dismiss items that do not apply."
     >
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {visible.map((check) => (
           <li
             key={check.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+            className="rounded-lg border border-border px-3 py-3 text-sm"
           >
-            <div>
-              <p className={check.ok ? "text-success" : "text-warning"}>
-                {check.ok ? "Ready" : "Needs attention"} · {check.label}
-              </p>
-              {!check.ok ? (
-                <Link href={check.href} className="text-xs text-accent">
-                  Open repair workflow
-                </Link>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p
+                  className={
+                    check.ok
+                      ? "font-medium text-success"
+                      : check.severity === "warning"
+                        ? "font-medium text-warning"
+                        : "font-medium text-danger"
+                  }
+                >
+                  <span aria-hidden="true">{statusGlyph(check)} </span>
+                  {check.label}
+                </p>
+                {!check.ok ? (
+                  <div className="mt-2 space-y-1 text-xs text-muted">
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Why it matters:{" "}
+                      </span>
+                      {check.why}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">
+                        How to fix:{" "}
+                      </span>
+                      {check.howToFix}
+                    </p>
+                    <p>About {check.estimatedMinutes} min</p>
+                    <Link
+                      href={check.href}
+                      className="inline-flex min-h-11 items-center text-accent hover:text-accent-hover"
+                    >
+                      Open fix →
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+              {check.dismissible && !check.ok ? (
+                <button
+                  type="button"
+                  className="shrink-0 text-xs text-muted hover:text-foreground"
+                  onClick={() => dismiss(check.id)}
+                >
+                  Mark unused
+                </button>
               ) : null}
             </div>
-            {check.dismissible && !check.ok ? (
-              <button
-                type="button"
-                className="text-xs text-muted hover:text-foreground"
-                onClick={() => dismiss(check.id)}
-              >
-                Mark unused
-              </button>
-            ) : null}
           </li>
         ))}
       </ul>

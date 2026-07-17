@@ -55,7 +55,7 @@ function toMicrosoftActionError<T = void>(error: unknown): MicrosoftActionResult
 
 function revalidateMicrosoftPaths() {
   revalidatePath("/imports");
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   revalidatePath("/today");
   revalidatePath("/week");
   revalidatePath("/tasks");

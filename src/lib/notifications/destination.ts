@@ -262,7 +262,7 @@ export function resolveNotificationDestination(
     }
 
     case "notification_settings":
-      return "/settings?section=notifications";
+      return "/settings/notifications";
 
     default:
       return "/today";
@@ -287,13 +287,18 @@ export function resolvePathFromPushData(
   if (typeof data.url === "string") {
     const url = data.url;
     const pathOnly = url.split("?")[0]?.split("#")[0] ?? url;
-    if (pathOnly === "/settings" || pathOnly.startsWith("/settings/")) {
-      return sanitizeInternalReturnPath(
-        url.includes("section=") ? url : "/settings?section=notifications",
-      );
+    if (pathOnly === "/settings") {
+      if (url.includes("section=notifications") || url.includes("section=")) {
+        // Legacy query deep links are resolved by the settings hub redirect.
+        return sanitizeInternalReturnPath(url);
+      }
+      return "/settings/notifications";
+    }
+    if (pathOnly.startsWith("/settings/")) {
+      return sanitizeInternalReturnPath(url);
     }
     if (pathOnly === "/test") {
-      return "/settings?section=notifications";
+      return "/settings/notifications";
     }
     return sanitizeInternalReturnPath(url);
   }

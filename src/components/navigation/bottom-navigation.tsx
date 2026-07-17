@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { openSearchPalette } from "@/components/search/command-palette-provider";
+import { NavIcon, hrefToNavIcon } from "@/components/icons/nav-icon";
 
 const PRIMARY_NAV = [
-  { href: "/today", label: "Today", icon: "☀" },
-  { href: "/inbox", label: "Inbox", icon: "📥" },
-  { href: "/calendar", label: "Calendar", icon: "▦" },
-  { href: "/tasks", label: "Tasks", icon: "☑" },
-  { href: "/chat", label: "Chat", icon: "◉" },
+  { href: "/today", label: "Today" },
+  { href: "/inbox", label: "Inbox" },
+  { href: "/calendar", label: "Calendar" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/chat", label: "Chat" },
 ] as const;
 
 const MORE_NAV = [
@@ -47,14 +48,15 @@ export function BottomNavigation() {
               <li key={item.href} className="min-w-0 flex-1">
                 <Link
                   href={item.href}
-                  className={`flex flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] transition-colors sm:px-2 sm:text-xs ${
+                  className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] transition-colors sm:px-2 sm:text-xs ${
                     isActive ? "text-accent" : "text-muted hover:text-foreground"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  <span className="text-lg leading-none" aria-hidden="true">
-                    {item.icon}
-                  </span>
+                  <NavIcon
+                    name={hrefToNavIcon(item.href)}
+                    className="h-5 w-5"
+                  />
                   <span className="font-medium">{item.label}</span>
                 </Link>
               </li>
@@ -64,7 +66,7 @@ export function BottomNavigation() {
             <button
               type="button"
               onClick={() => setMoreOpen((open) => !open)}
-              className={`flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] transition-colors sm:px-2 sm:text-xs ${
+              className={`flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] transition-colors sm:px-2 sm:text-xs ${
                 isMoreActive || moreOpen
                   ? "text-accent"
                   : "text-muted hover:text-foreground"
@@ -72,9 +74,7 @@ export function BottomNavigation() {
               aria-expanded={moreOpen}
               aria-controls="more-navigation-sheet"
             >
-              <span className="text-lg leading-none" aria-hidden="true">
-                ⋯
-              </span>
+              <NavIcon name="more" className="h-5 w-5" />
               <span className="font-medium">More</span>
             </button>
           </li>
@@ -84,7 +84,7 @@ export function BottomNavigation() {
       {moreOpen && (
         <div
           id="more-navigation-sheet"
-          className="safe-bottom fixed inset-x-0 bottom-16 z-50 rounded-t-2xl border border-border bg-surface p-4 shadow-xl lg:hidden"
+          className="safe-bottom fixed inset-x-0 bottom-16 z-50 max-h-[70vh] overflow-y-auto rounded-t-2xl border border-border bg-surface p-4 shadow-xl lg:hidden"
           role="dialog"
           aria-label="More navigation"
         >
@@ -93,7 +93,7 @@ export function BottomNavigation() {
             <button
               type="button"
               onClick={() => setMoreOpen(false)}
-              className="text-muted hover:text-foreground"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-muted hover:text-foreground"
               aria-label="Close more menu"
             >
               ✕
@@ -107,8 +107,9 @@ export function BottomNavigation() {
                   setMoreOpen(false);
                   openSearchPalette();
                 }}
-                className="block w-full rounded-lg border border-border px-3 py-3 text-left text-sm text-foreground hover:bg-surface-elevated"
+                className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-border px-3 py-3 text-left text-sm text-foreground hover:bg-surface-elevated"
               >
+                <NavIcon name="search" className="h-4 w-4" />
                 Search
               </button>
             </li>
@@ -117,8 +118,12 @@ export function BottomNavigation() {
                 <Link
                   href={item.href}
                   onClick={() => setMoreOpen(false)}
-                  className="block rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface-elevated"
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface-elevated"
                 >
+                  <NavIcon
+                    name={hrefToNavIcon(item.href)}
+                    className="h-4 w-4"
+                  />
                   {item.label}
                 </Link>
               </li>

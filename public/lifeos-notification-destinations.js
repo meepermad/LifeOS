@@ -228,7 +228,7 @@
       }
 
       case "notification_settings":
-        return "/settings?section=notifications";
+        return "/settings/notifications";
 
       default:
         return "/today";
@@ -247,15 +247,17 @@
     if (typeof data.url === "string") {
       var url = data.url;
       var pathOnly = (url.split("?")[0] || url).split("#")[0] || url;
-      if (pathOnly === "/settings" || pathOnly.indexOf("/settings/") === 0) {
-        return sanitizeInternalReturnPath(
-          url.indexOf("section=") !== -1
-            ? url
-            : "/settings?section=notifications",
-        );
+      if (pathOnly === "/settings") {
+        if (url.indexOf("section=") !== -1) {
+          return sanitizeInternalReturnPath(url);
+        }
+        return "/settings/notifications";
+      }
+      if (pathOnly.indexOf("/settings/") === 0) {
+        return sanitizeInternalReturnPath(url);
       }
       if (pathOnly === "/test") {
-        return "/settings?section=notifications";
+        return "/settings/notifications";
       }
       return sanitizeInternalReturnPath(url);
     }

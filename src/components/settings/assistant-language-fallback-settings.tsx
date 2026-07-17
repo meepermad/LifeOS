@@ -63,56 +63,74 @@ export function AssistantLanguageFallbackSettings({ initialStatus }: Props) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
-        When deterministic parsing cannot understand a command, LifeOS may send
-        that command, the current date, and your timezone to the configured AI
-        provider. Your calendar and task data are not sent.
+        Privacy: when deterministic parsing cannot understand a command, LifeOS
+        may send only that command text, the current date, and your timezone to
+        the configured provider. Calendar and task contents are never sent.
       </p>
 
-      <dl className="space-y-2 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted">Status</dt>
-          <dd className="text-right text-foreground">
-            {status.enabled ? "Enabled" : "Disabled"}
-          </dd>
+      {!status.enabled ? (
+        <div className="rounded-lg border border-border bg-surface-elevated/40 px-3 py-3 text-sm text-muted">
+          Language fallback is disabled. Unavailable providers are hidden until a
+          supported provider is configured for this environment.
         </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted">Provider</dt>
-          <dd className="text-right text-foreground">
-            {status.provider ?? "—"}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted">Requests used today</dt>
-          <dd className="text-right text-foreground">
-            {status.requestsUsedToday} / {status.dailyCap}
-          </dd>
-        </div>
-        {status.lastSafeError ? (
+      ) : (
+        <dl className="space-y-2 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-muted">Last safe error</dt>
-            <dd className="text-right text-foreground">{status.lastSafeError}</dd>
+            <dt className="text-muted">Status</dt>
+            <dd className="text-right text-foreground">Enabled</dd>
           </div>
-        ) : null}
-      </dl>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Provider</dt>
+            <dd className="text-right text-foreground">
+              {status.provider ?? "Configured"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Daily quota</dt>
+            <dd className="text-right text-foreground">
+              {status.requestsUsedToday} / {status.dailyCap} used today
+            </dd>
+          </div>
+          {status.lastSafeError ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Last usage / error</dt>
+              <dd className="text-right text-foreground">{status.lastSafeError}</dd>
+            </div>
+          ) : (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Last usage</dt>
+              <dd className="text-right text-foreground">No recent errors</dd>
+            </div>
+          )}
+        </dl>
+      )}
 
-      <FormField label="Test phrase" htmlFor="ai-test-phrase">
-        <input
-          id="ai-test-phrase"
-          className={inputClassName}
-          value={testPhrase}
-          onChange={(event) => setTestPhrase(event.target.value)}
-          maxLength={500}
-        />
-      </FormField>
+      {status.enabled ? (
+        <>
+          <FormField label="Test phrase" htmlFor="ai-test-phrase">
+            <input
+              id="ai-test-phrase"
+              className={inputClassName}
+              value={testPhrase}
+              onChange={(event) => setTestPhrase(event.target.value)}
+              maxLength={500}
+            />
+          </FormField>
 
-      <div className="flex flex-wrap gap-2">
-        <PrimaryButton onClick={handleTest} disabled={isPending}>
-          Test classification
-        </PrimaryButton>
+          <div className="flex flex-wrap gap-2">
+            <PrimaryButton onClick={handleTest} disabled={isPending}>
+              Test classification
+            </PrimaryButton>
+            <SecondaryButton onClick={refreshStatus} disabled={isPending}>
+              Refresh status
+            </SecondaryButton>
+          </div>
+        </>
+      ) : (
         <SecondaryButton onClick={refreshStatus} disabled={isPending}>
           Refresh status
         </SecondaryButton>
-      </div>
+      )}
 
       {testResult ? (
         <p className="text-sm text-foreground">{testResult}</p>

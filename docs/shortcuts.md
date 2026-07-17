@@ -4,9 +4,9 @@ LifeOS exposes a private HTTPS API for Apple Shortcuts. You must create these sh
 
 ## Prerequisites
 
-1. Register a shortcut device in **Settings → Siri and Shortcuts**
+1. Register a shortcut device in **Settings → Siri & Shortcuts**
 2. Copy the one-time token immediately
-3. Copy the API URL shown in Settings
+3. Copy the production API URL shown in Settings (derived from `NEXT_PUBLIC_APP_URL`; do not use localhost in production Shortcuts)
 
 ## Shortcut: LifeOS
 

@@ -36,7 +36,7 @@ function toActionError(error: unknown): ActionResult {
 export async function updateProfileAction(weekStartsOn: 0 | 1): Promise<ActionResult> {
   try {
     await updateProfileSettings({ weekStartsOn });
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     revalidatePath("/week");
     return { success: true };
   } catch (error) {
@@ -49,7 +49,7 @@ export async function updatePlanningPreferencesAction(
 ): Promise<ActionResult> {
   try {
     await updatePlanningPreferences(input);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -61,7 +61,7 @@ export async function createAvailabilityRuleAction(
 ): Promise<ActionResult> {
   try {
     await createAvailabilityRule(input);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -74,7 +74,7 @@ export async function updateAvailabilityRuleAction(
 ): Promise<ActionResult> {
   try {
     await updateAvailabilityRule(ruleId, input);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -87,7 +87,7 @@ export async function toggleAvailabilityRuleAction(
 ): Promise<ActionResult> {
   try {
     await toggleAvailabilityRule(ruleId, isEnabled);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -99,7 +99,7 @@ export async function deleteAvailabilityRuleAction(
 ): Promise<ActionResult> {
   try {
     await deleteAvailabilityRule(ruleId);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -112,7 +112,7 @@ export async function updateCalendarVisibilityAction(
 ): Promise<ActionResult> {
   try {
     await updateCalendarVisibility(calendarId, isVisible);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     revalidatePath("/week");
     revalidatePath("/today");
     return { success: true };

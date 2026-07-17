@@ -33,8 +33,14 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-medium text-foreground">Insights</h1>
-          <p className="text-sm text-muted">{range.label}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Insights
+          </h1>
+          <p className="mt-1 text-sm text-muted">{range.label}</p>
+          <p className="mt-1 text-xs text-muted">
+            Descriptive metrics only — no productivity score. Confidence notes
+            appear under each card.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {[
@@ -45,7 +51,7 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
             <Link
               key={value}
               href={`/insights?range=${value}`}
-              className={`rounded-lg px-3 py-1.5 ${
+              className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 ${
                 preset === value
                   ? "bg-accent text-background"
                   : "bg-surface-elevated text-muted"
@@ -57,7 +63,30 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <SectionCard title="At a glance">
+        <p className="text-sm text-foreground">
+          {insights.completedTasks.value ?? 0} tasks completed
+          {insights.liveTrackedMinutes.value != null
+            ? ` · ${formatDurationMinutes(insights.liveTrackedMinutes.value)} live tracked`
+            : ""}
+          {insights.estimationAccuracy.value
+            ? ` · estimation median ${insights.estimationAccuracy.value.medianRatio.toFixed(2)}×`
+            : ""}
+          .
+        </p>
+        {insights.estimationAccuracy.value ? (
+          <p className="mt-2 text-xs text-muted">
+            Trend cue:{" "}
+            {insights.estimationAccuracy.value.medianRatio > 1.1
+              ? "↑ often taking longer than estimates"
+              : insights.estimationAccuracy.value.medianRatio < 0.9
+                ? "↓ often finishing under estimates"
+                : "→ estimates are roughly on target"}
+          </p>
+        ) : null}
+      </SectionCard>
+
+      <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
         <SectionCard title="Live tracked time">
           <p className="text-2xl font-medium text-foreground">
             {insights.liveTrackedMinutes.value != null

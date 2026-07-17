@@ -14,13 +14,22 @@ import { getActiveBreakForDate } from "@/lib/academic/exception-filter";
 import { getActiveTerm } from "@/lib/academic/active-term";
 import { listAcademicTerms } from "@/lib/data/academic/terms";
 import { listExceptionsForTerm } from "@/lib/data/academic/exceptions";
-import { getAppLocalDateKey, getTodayBoundsUtc, nowInAppTimezone } from "@/lib/dates/timezone";
+import { addDays } from "date-fns";
+import {
+  getAppLocalDateKey,
+  getTodayBoundsUtc,
+  nowInAppTimezone,
+} from "@/lib/dates/timezone";
 import { getCompletedReviewSession, getDailyPriorities } from "@/lib/data/reviews";
 import { countBlocksAwaitingFeedback } from "@/lib/planning/awaiting-feedback";
 import {
   countInboxTasks,
   detectDailyPeriod,
 } from "@/lib/reviews/loaders";
+import { listWorkShiftsInRange } from "@/lib/data/work-shifts";
+import { getActiveTimer } from "@/lib/data/time-entries";
+import { requireAllowedUser } from "@/lib/auth/authorize-user";
+import { createClient } from "@/lib/supabase/server";
 import type { RelatedCanvasTask } from "@/components/events/event-list";
 import type { TaskRow } from "@/types/domain";
 
@@ -62,6 +71,17 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
   let dailyPriorities: Awaited<ReturnType<typeof getDailyPriorities>> = [];
   let inboxCount = 0;
   let awaitingFeedbackCount = 0;
+  let pendingReviews = 0;
+  let workShifts: Awaited<ReturnType<typeof listWorkShiftsInRange>> = [];
+  let activeTimer: Awaited<ReturnType<typeof getActiveTimer>> = null;
+  let upcomingDeadlines: TaskRow[] = [];
+  let recentActivity: Array<{ id: string; title: string; completedAt: string }> =
+    [];
+  let upcomingReminders: Array<{
+    id: string;
+    type: string;
+    scheduledFor: string;
+  }> = [];
   let reviewPrompt: {
     period: "morning" | "evening";
     completed: boolean;
@@ -75,16 +95,21 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
     const active = getActiveTerm(terms);
     if (active) {
       const exceptions = await listExceptionsForTerm(active.id);
-      academicBreakTitle = getActiveBreakForDate(todayKey, exceptions)?.title ?? null;
+      academicBreakTitle =
+        getActiveBreakForDate(todayKey, exceptions)?.title ?? null;
     }
   } catch {
     academicBreakTitle = null;
   }
 
   try {
-    [events, nextEvent] = await Promise.all([
+    [events, nextEvent, workShifts] = await Promise.all([
       listTodayEvents(),
       getNextUpcomingEvent(),
+      listWorkShiftsInRange(
+        bounds.start.toISOString(),
+        bounds.end.toISOString(),
+      ),
     ]);
   } catch (error) {
     eventsError =
@@ -122,11 +147,77 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
     planningRun = await getActivePlanningRun({ periodType: "day" });
   } catch (error) {
     planningError =
-      error instanceof Error ? error.message : "Failed to load planning proposals";
+      error instanceof Error
+        ? error.message
+        : "Failed to load planning proposals";
   }
 
   const allTasks = await listTasks({ status: "active", sort: "due_date" });
   const relatedTasksByEventId = buildRelatedTasksByEventId(allTasks);
+
+  const horizon = addDays(nowInAppTimezone(), 7);
+  const horizonKey = getAppLocalDateKey(horizon);
+  upcomingDeadlines = allTasks
+    .filter((task) => {
+      if (!task.due_at) return false;
+      const key = getAppLocalDateKey(new Date(task.due_at));
+      return key > todayKey && key <= horizonKey;
+    })
+    .slice(0, 8);
+
+  try {
+    activeTimer = await getActiveTimer();
+  } catch {
+    activeTimer = null;
+  }
+
+  try {
+    const user = await requireAllowedUser();
+    const supabase = await createClient();
+    const [{ data: completed }, { data: deliveries }, { count }] =
+      await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id, title, completed_at")
+          .eq("user_id", user.id)
+          .eq("status", "completed")
+          .not("completed_at", "is", null)
+          .order("completed_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("notification_deliveries")
+          .select("id, notification_type, scheduled_for, status")
+          .eq("user_id", user.id)
+          .in("status", ["pending", "scheduled"])
+          .gte("scheduled_for", new Date().toISOString())
+          .order("scheduled_for", { ascending: true })
+          .limit(5),
+        supabase
+          .from("review_sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .is("completed_at", null),
+      ]);
+
+    recentActivity = (completed ?? [])
+      .filter((row) => row.completed_at)
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        completedAt: row.completed_at as string,
+      }));
+
+    upcomingReminders = (deliveries ?? []).map((row) => ({
+      id: row.id,
+      type: row.notification_type,
+      scheduledFor: row.scheduled_for,
+    }));
+
+    pendingReviews = count ?? 0;
+  } catch {
+    recentActivity = [];
+    upcomingReminders = [];
+  }
 
   try {
     const period = detectDailyPeriod();
@@ -154,14 +245,20 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
       <ActiveTimerPanelNotice panel={params.panel} />
       <TodayView
         events={events}
+        workShifts={workShifts}
         dueToday={dueToday}
         overdue={overdue}
         allocatedToday={allocatedToday}
+        upcomingDeadlines={upcomingDeadlines}
         nextEvent={nextEvent}
         workload={workload}
         canvasTasksNeedingEstimates={canvasTasksNeedingEstimates}
         relatedTasksByEventId={relatedTasksByEventId}
         planningRun={planningRun}
+        activeTimer={activeTimer}
+        recentActivity={recentActivity}
+        upcomingReminders={upcomingReminders}
+        pendingReviews={pendingReviews}
         eventsError={eventsError}
         tasksError={tasksError}
         workloadError={workloadError}

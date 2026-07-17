@@ -48,18 +48,36 @@ export function ShortcutDeviceSettings({ initialDevices, apiUrl }: Props) {
   }
 
   function handleRegister() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Enter a device name before registering.");
+      return;
+    }
+    if (!apiUrl.startsWith("https://") && !apiUrl.includes("localhost")) {
+      setError(
+        "API URL must be your production HTTPS endpoint (from NEXT_PUBLIC_APP_URL). Fix the app URL configuration before registering.",
+      );
+      return;
+    }
+    if (!apiUrl.includes("/api/shortcuts/command")) {
+      setError("API URL looks incomplete. Expected /api/shortcuts/command.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await registerShortcutDeviceAction({
-        name,
+        name: trimmed,
         spokenDetailLevel,
       });
       if (!result.success) {
-        setError(result.error);
+        setError(result.error || "Could not register shortcut device.");
         return;
       }
       setOneTimeToken(result.data?.token ?? null);
       setName("");
-      setMessage("Shortcut device registered. Copy the token now — it will not be shown again.");
+      setMessage(
+        "Shortcut device registered. Copy the token now — it will not be shown again.",
+      );
       setError(null);
       await refreshDevices();
       router.refresh();
@@ -135,7 +153,16 @@ export function ShortcutDeviceSettings({ initialDevices, apiUrl }: Props) {
       </p>
 
       <FormField label="API URL" htmlFor="shortcut-api-url">
-        <input id="shortcut-api-url" className={inputClassName} readOnly value={apiUrl} />
+        <input
+          id="shortcut-api-url"
+          className={inputClassName}
+          readOnly
+          value={apiUrl || "Not configured — set NEXT_PUBLIC_APP_URL"}
+        />
+        <p className="mt-1 text-xs text-muted">
+          Use this production endpoint in Apple Shortcuts. Localhost defaults are
+          not used when the app URL is configured.
+        </p>
       </FormField>
 
       <div className="grid gap-3 sm:grid-cols-2">

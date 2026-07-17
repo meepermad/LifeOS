@@ -56,7 +56,7 @@ export function PrimaryButton({
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`w-full rounded-lg bg-accent px-4 py-2.5 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 ${className ?? ""}`}
+      className={`inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50 ${className ?? ""}`}
     >
       {loading ? pendingLabel : children}
     </button>
@@ -145,18 +145,23 @@ export function SectionCard({
 
 export function EmptyState({
   message,
+  description,
   action,
 }: {
   message: string;
+  description?: string;
   action?: { label: string; href: string };
 }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
-      <p className="text-sm text-muted">{message}</p>
+      <p className="text-sm font-medium text-foreground">{message}</p>
+      {description ? (
+        <p className="mt-2 text-sm text-muted">{description}</p>
+      ) : null}
       {action ? (
         <a
           href={action.href}
-          className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover"
+          className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-accent hover:text-accent-hover"
         >
           {action.label}
         </a>

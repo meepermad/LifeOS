@@ -2,7 +2,7 @@
 
 Private personal planning and workload management PWA. LifeOS aggregates schedules, assignments, tasks, work shifts, and personal commitments into one master planning system.
 
-**Current phase:** Phase 8 — Microsoft 365 calendar integration (read-only)
+**Current phase:** Release Candidate 1 (RC1) — product polish for daily personal use
 
 ## Technology stack
 

@@ -159,7 +159,7 @@ describe("updateNotificationPreferencesAction", () => {
     const result = await updateNotificationPreferencesAction(validInput);
 
     expect(result).toEqual({ ok: true });
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings", "layout");
   });
 
   it("returns VALIDATION_FAILED for bad input", async () => {

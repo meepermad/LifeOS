@@ -4,6 +4,8 @@
 
 LifeOS is a single-user Next.js progressive web application that normalizes calendar and task data from multiple sources into a unified planning system.
 
+**Release status:** RC1 focuses on product chrome and UX polish (settings IA, header/account menu, search/command palette, Today dashboard, readiness diagnostics) without changing database architecture, RLS, or major subsystems.
+
 ## Component diagram
 
 ```text

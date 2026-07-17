@@ -154,7 +154,7 @@ describe("service worker notificationclick", () => {
     const { waitUntil } = fireClick({ url: "/settings" });
     await waitUntil.mock.calls[0][0];
     expect(harness.openWindow).toHaveBeenCalledWith(
-      "https://lifeos.example/settings?section=notifications",
+      "https://lifeos.example/settings/notifications",
     );
   });
 

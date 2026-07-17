@@ -6,6 +6,7 @@ import {
   SEARCH_RESULTS_PER_CATEGORY,
   type SearchResult,
 } from "@/lib/search/types";
+import { getWorkCalendar } from "@/lib/data/calendars";
 
 function escapeIlike(value: string): string {
   return value.replace(/[%_\\]/g, "\\$&");
@@ -21,6 +22,7 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
   const supabase = await createClient();
   const pattern = `%${escapeIlike(query)}%`;
   const limit = SEARCH_RESULTS_PER_CATEGORY;
+  const workCalendar = await getWorkCalendar();
 
   const [
     tasksResult,
@@ -29,6 +31,7 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
     termsResult,
     profilesResult,
     templatesResult,
+    notificationsResult,
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -40,12 +43,12 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
       .limit(limit),
     supabase
       .from("events")
-      .select("id, title, start_at, event_type")
+      .select("id, title, start_at, event_type, calendar_id")
       .eq("user_id", user.id)
       .ilike("title", pattern)
       .neq("status", "cancelled")
       .order("start_at", { ascending: false })
-      .limit(limit),
+      .limit(limit * 2),
     supabase
       .from("courses")
       .select("id, name, code")
@@ -71,6 +74,13 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
       .eq("user_id", user.id)
       .ilike("title", pattern)
       .limit(limit),
+    supabase
+      .from("notification_deliveries")
+      .select("id, notification_type, status, scheduled_for")
+      .eq("user_id", user.id)
+      .ilike("notification_type", pattern)
+      .order("scheduled_for", { ascending: false })
+      .limit(limit),
   ]);
 
   const results: SearchResult[] = [...matchLocalCommands(query)];
@@ -85,8 +95,29 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
     });
   }
 
+  let eventCount = 0;
+  let shiftCount = 0;
   for (const event of eventsResult.data ?? []) {
+    const isWorkShift =
+      event.event_type === "work" ||
+      (workCalendar != null && event.calendar_id === workCalendar.id);
     const dateKey = event.start_at.slice(0, 10);
+
+    if (isWorkShift) {
+      if (shiftCount >= limit) continue;
+      shiftCount += 1;
+      results.push({
+        id: `shift-${event.id}`,
+        category: "work_shift",
+        title: event.title,
+        subtitle: "Work shift",
+        href: `/work?date=${dateKey}&event=${event.id}`,
+      });
+      continue;
+    }
+
+    if (eventCount >= limit) continue;
+    eventCount += 1;
     results.push({
       id: `event-${event.id}`,
       category: "event",
@@ -133,6 +164,16 @@ export async function searchLifeOs(rawQuery: string): Promise<SearchResult[]> {
       title: template.title,
       subtitle: template.is_active ? "Active" : "Paused",
       href: `/tasks/recurring`,
+    });
+  }
+
+  for (const delivery of notificationsResult.data ?? []) {
+    results.push({
+      id: `notification-${delivery.id}`,
+      category: "notification",
+      title: delivery.notification_type.replaceAll("_", " "),
+      subtitle: delivery.status,
+      href: `/settings/notifications`,
     });
   }
 

@@ -128,7 +128,7 @@ export async function enableNotificationsAction(input: {
 
     await savePushSubscription(input);
     await setNotificationsEnabled(true);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toEnableActionError(error);
@@ -157,7 +157,7 @@ export async function disableCurrentDeviceAction(
       return { success: false, error: "No device subscription found" };
     }
     await deactivateCurrentDevice(endpoint);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -172,7 +172,7 @@ export async function deactivateDeviceAction(
     if (!deactivated) {
       return { success: false, error: "Device not found" };
     }
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -287,7 +287,7 @@ export async function updateNotificationPreferencesAction(
     mutationCompleted = true;
 
     try {
-      revalidatePath("/settings");
+      revalidatePath("/settings", "layout");
     } catch {
       logNotificationPreferencesDiagnostic({
         operation: "update_notification_preferences",

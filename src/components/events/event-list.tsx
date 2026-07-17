@@ -179,7 +179,13 @@ export function WeekAgenda({
   const hasEvents = dayKeys.some((key) => (eventsByDay.get(key)?.length ?? 0) > 0);
 
   if (!hasEvents && !daySummaries) {
-    return <EmptyState message="No events this week. Create one to get started." />;
+    return (
+      <EmptyState
+        message="No events this week."
+        description="Create an event or sync school and work calendars to fill your week."
+        action={{ label: "Add event", href: "/events/new" }}
+      />
+    );
   }
 
   return (

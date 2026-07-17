@@ -10,11 +10,43 @@
   border-width: 2px;
   font-size: 0.75rem;
   min-height: 1.25rem;
+  transition: box-shadow 120ms ease, transform 120ms ease;
 }
 
-.lifeos-calendar .fc-event.lifeos-deadline-marker {
-  opacity: 0.45;
+.lifeos-calendar .fc-event:hover,
+.lifeos-calendar .fc-event:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+  z-index: 2;
+}
+
+.lifeos-calendar .fc-event.fc-event-dragging,
+.lifeos-calendar .fc-event.fc-event-resizing {
+  opacity: 0.85;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transform: scale(1.02);
+}
+
+.lifeos-calendar .fc-event.lifeos-deadline-marker,
+.lifeos-calendar .fc-event.lifeos-event-deadline,
+.lifeos-calendar .fc-event.lifeos-event-task-deadline {
+  opacity: 0.9;
   border-style: dashed;
+  border-left-width: 4px;
+}
+
+.lifeos-calendar .fc-daygrid-event.fc-event-allday,
+.lifeos-calendar .fc-timegrid-event.fc-event-allday {
+  border-radius: 0.4rem;
+  font-weight: 600;
+}
+
+.lifeos-calendar .fc-daygrid-day-number {
+  font-size: 0.75rem;
+  padding: 0.35rem;
+}
+
+.lifeos-calendar .fc-daygrid-day.fc-day-today {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .lifeos-calendar .fc-timegrid-event .fc-event-main {
@@ -35,8 +67,28 @@
   text-decoration: line-through;
 }
 
+.lifeos-calendar .fc-list-event:hover td {
+  background: var(--surface-elevated);
+}
+
+@media (max-width: 1023px) {
+  .lifeos-calendar .fc-list-event-title,
+  .lifeos-calendar .fc-list-event-time {
+    font-size: 0.85rem;
+  }
+
+  .lifeos-calendar .fc-toolbar-title {
+    font-size: 1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lifeos-calendar .fc-event {
     transition: none;
+  }
+
+  .lifeos-calendar .fc-event.fc-event-dragging,
+  .lifeos-calendar .fc-event.fc-event-resizing {
+    transform: none;
   }
 }

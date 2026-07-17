@@ -47,7 +47,7 @@ export async function saveCanvasFeedAction(
     const parsedUrl = canvasFeedUrlSchema.parse(url);
     const status = await saveCanvasFeedUrl(parsedUrl);
     revalidatePath("/imports");
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true, data: status };
   } catch (error) {
     return toCanvasActionError(error);
@@ -58,7 +58,7 @@ export async function disconnectCanvasAction(): Promise<CanvasActionResult> {
   try {
     await disconnectCanvasConnection();
     revalidatePath("/imports");
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true };
   } catch (error) {
     return toCanvasActionError(error);
@@ -69,7 +69,7 @@ export async function syncCanvasAction(): Promise<CanvasActionResult<CanvasSyncR
   try {
     const result = await syncCanvasCalendar();
     revalidatePath("/imports");
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     revalidatePath("/today");
     revalidatePath("/week");
     revalidatePath("/tasks");

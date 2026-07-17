@@ -60,7 +60,7 @@ export async function registerShortcutDeviceAction(
       spokenDetailLevel: parsed.spokenDetailLevel as SpokenDetailLevel,
     });
     const apiUrl = `${getServerEnv().NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? ""}/api/shortcuts/command`;
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return {
       success: true,
       data: {
@@ -90,7 +90,7 @@ export async function rotateShortcutDeviceTokenAction(deviceId: string) {
   try {
     await requireAllowedUser();
     const result = await rotateShortcutDeviceToken(deviceId);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return {
       success: true as const,
       data: {
@@ -107,7 +107,7 @@ export async function revokeShortcutDeviceAction(deviceId: string) {
   try {
     await requireAllowedUser();
     await revokeShortcutDevice(deviceId);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true as const };
   } catch (error) {
     return toActionError(error);
@@ -122,7 +122,7 @@ export async function updateShortcutDeviceAction(input: {
   try {
     await requireAllowedUser();
     await updateShortcutDevice(input);
-    revalidatePath("/settings");
+    revalidatePath("/settings", "layout");
     return { success: true as const };
   } catch (error) {
     return toActionError(error);

@@ -11,15 +11,17 @@ import { SectionCard } from "@/components/forms/ui";
 
 export function WorkloadSummaryCard({
   workload,
+  title = "Workload",
 }: {
   workload: WorkloadSummary;
+  title?: string;
 }) {
   const [showExplanation, setShowExplanation] = useState(false);
   const todaySummary = workload.daySummaries[0];
 
   return (
     <SectionCard
-      title="Workload"
+      title={title}
       description={workloadStatusSentence(workload.status, "Today")}
     >
       <div className="space-y-3">

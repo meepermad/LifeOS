@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavIcon, hrefToNavIcon } from "@/components/icons/nav-icon";
 
 const NAV_ITEMS = [
   { href: "/today", label: "Today" },
@@ -33,13 +34,14 @@ export function DesktopSidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                  className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${
                     isActive
                       ? "bg-accent/15 text-accent"
                       : "text-muted hover:bg-surface-elevated hover:text-foreground"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
+                  <NavIcon name={hrefToNavIcon(item.href)} className="h-4 w-4 shrink-0" />
                   {item.label}
                 </Link>
               </li>

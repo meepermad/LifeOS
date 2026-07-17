@@ -107,7 +107,7 @@ async function StatusPanels() {
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted">Stale timer</dt>
-            <dd>{status.staleTimerOpen ? "Needs attention" : "Clear"}</dd>
+            <dd>{status.staleTimerOpen ? "Stale timer open" : "Clear"}</dd>
           </div>
         </dl>
       </SectionCard>

@@ -3,12 +3,12 @@ import { ensureUserInitialized } from "@/lib/data/bootstrap";
 import { requireAllowedUser } from "@/lib/auth/authorize-user";
 import { BottomNavigation } from "@/components/navigation/bottom-navigation";
 import { DesktopSidebar } from "@/components/navigation/desktop-sidebar";
+import { DashboardHeader } from "@/components/navigation/dashboard-header";
 import { PersistentTimerBar } from "@/components/timer/persistent-timer-bar";
 import { StaleTimerBanner } from "@/components/timer/stale-timer-banner";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { CommandPaletteProvider } from "@/components/search/command-palette-provider";
-import { HeaderSearchButton } from "@/components/search/header-search-button";
 import { NotificationNavigateListener } from "@/components/notifications/notification-navigate-listener";
+import { getAppVersionLabel } from "@/lib/status/system-status";
 
 export default async function DashboardLayout({
   children,
@@ -32,20 +32,10 @@ export default async function DashboardLayout({
     <div className="safe-top min-h-dvh bg-background">
       <NotificationNavigateListener />
       <DesktopSidebar />
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md lg:pl-56">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3 lg:max-w-6xl xl:max-w-7xl">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider text-muted">
-              LifeOS
-            </p>
-            <p className="truncate text-sm text-foreground">{user.email}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <HeaderSearchButton />
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        email={user.email ?? "Account"}
+        versionLabel={getAppVersionLabel()}
+      />
 
       <main className="mx-auto max-w-lg px-4 pb-28 pt-4 lg:ml-56 lg:max-w-6xl xl:max-w-7xl">
         {initError ? <InitializationError message={initError} /> : children}

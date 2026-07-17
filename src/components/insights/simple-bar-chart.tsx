@@ -24,6 +24,7 @@ export function SimpleBarChart({
               className="w-full rounded-t bg-accent/70"
               style={{ height: `${Math.max(4, (item.value / max) * 120)}px` }}
               title={`${item.label}: ${valueFormatter(item.value)}`}
+              aria-label={`${item.label}: ${valueFormatter(item.value)}`}
             />
             <span className="truncate text-[10px] text-muted">{item.label}</span>
           </div>

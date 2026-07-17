@@ -41,6 +41,10 @@ export type ReadinessCheck = {
   ok: boolean;
   href: string;
   dismissible: boolean;
+  severity: "ok" | "warning" | "error";
+  why: string;
+  howToFix: string;
+  estimatedMinutes: number;
 };
 
 export function getAppVersionLabel(): string {
@@ -97,7 +101,8 @@ export async function loadSystemStatus(): Promise<SystemStatusSnapshot> {
       .eq("is_active", true)
       .is("paused_at", null)
       .is("archived_at", null)
-      .is("ended_at", null),
+      .is("ended_at", null)
+      .lt("end_date", now.toISOString().slice(0, 10)),
     supabase
       .from("review_sessions")
       .select("id", { count: "exact", head: true })
@@ -154,80 +159,146 @@ export async function loadSystemStatus(): Promise<SystemStatusSnapshot> {
 export function buildSemesterReadinessChecks(
   status: SystemStatusSnapshot,
 ): ReadinessCheck[] {
+  const canvasRecent = Boolean(
+    status.canvasLastSuccessAt &&
+      Date.now() - new Date(status.canvasLastSuccessAt).getTime() <
+        7 * 24 * 60 * 60 * 1000,
+  );
+
   return [
     {
       id: "active-term",
-      label: "Active academic term exists",
+      label: "Active semester detected",
       ok: Boolean(status.activeTermName),
       href: "/school",
       dismissible: true,
+      severity: status.activeTermName ? "ok" : "error",
+      why: "School planning, class meetings, and Canvas review need an active academic term.",
+      howToFix: "Open School and create or activate a semester with start and end dates.",
+      estimatedMinutes: 3,
     },
     {
       id: "term-current",
-      label: "Term dates are current",
+      label: status.activeTermCurrent
+        ? "Semester dates are current"
+        : "Semester dates are out of range",
       ok: status.activeTermCurrent,
       href: "/school",
       dismissible: true,
+      severity: status.activeTermCurrent ? "ok" : "warning",
+      why: "Today falls outside the active semester window, so class schedules may look empty.",
+      howToFix: "Update the active semester dates or switch to the current term.",
+      estimatedMinutes: 2,
     },
     {
       id: "courses",
-      label: "At least one course configured",
+      label:
+        status.courseCount > 0
+          ? "Courses configured"
+          : "No courses configured",
       ok: status.courseCount > 0,
       href: "/school",
       dismissible: true,
+      severity: status.courseCount > 0 ? "ok" : "error",
+      why: "Courses drive class meetings, Canvas mapping, and school workload.",
+      howToFix: "Add at least one course to the active semester.",
+      estimatedMinutes: 5,
     },
     {
       id: "canvas",
-      label: "Canvas connected",
+      label: status.canvasConnected
+        ? "Canvas connected"
+        : "Canvas not connected",
       ok: status.canvasConnected,
       href: "/imports",
       dismissible: true,
+      severity: status.canvasConnected ? "ok" : "warning",
+      why: "Without Canvas, assignment deadlines will not sync automatically.",
+      howToFix: "Connect Canvas from Imports and complete the token setup.",
+      estimatedMinutes: 5,
     },
     {
       id: "canvas-recent",
-      label: "Canvas synced recently",
-      ok: Boolean(
-        status.canvasLastSuccessAt &&
-          Date.now() - new Date(status.canvasLastSuccessAt).getTime() <
-            7 * 24 * 60 * 60 * 1000,
-      ),
+      label: canvasRecent
+        ? "Canvas synced recently"
+        : "Canvas sync is stale",
+      ok: canvasRecent,
       href: "/imports",
       dismissible: true,
+      severity: canvasRecent ? "ok" : "warning",
+      why: "A stale Canvas sync means new deadlines may be missing from Today and Calendar.",
+      howToFix: "Run a Canvas sync from Imports and confirm the last success time.",
+      estimatedMinutes: 2,
     },
     {
       id: "push",
-      label: "Push subscription active",
+      label:
+        status.devicePushCount > 0
+          ? "Push notifications enabled"
+          : "Push notifications not enabled",
       ok: status.devicePushCount > 0,
-      href: "/settings",
+      href: "/settings/notifications",
       dismissible: true,
+      severity: status.devicePushCount > 0 ? "ok" : "warning",
+      why: "Review prompts and deadline reminders require an active push subscription.",
+      howToFix: "Enable Web Push on this device in Notification settings.",
+      estimatedMinutes: 2,
     },
     {
       id: "work-profiles",
-      label: "Work profiles configured",
+      label:
+        status.workProfilesConfigured > 0
+          ? "Work profile configured"
+          : "Work profile missing",
       ok: status.workProfilesConfigured > 0,
       href: "/work",
       dismissible: true,
+      severity: status.workProfilesConfigured > 0 ? "ok" : "warning",
+      why: "Work shifts attach to a profile so hours and imports stay organized.",
+      howToFix: "Create a work profile on the Work page.",
+      estimatedMinutes: 3,
     },
     {
       id: "work-schedule",
-      label: "Upcoming work schedule entered",
+      label:
+        status.upcomingWorkShifts > 0
+          ? "Upcoming work schedule present"
+          : "No upcoming work shifts",
       ok: status.upcomingWorkShifts > 0,
       href: "/work",
       dismissible: true,
+      severity: status.upcomingWorkShifts > 0 ? "ok" : "warning",
+      why: "Without upcoming shifts, workload and Today miss your work hours.",
+      howToFix: "Import or enter shifts for the next week on Work.",
+      estimatedMinutes: 5,
     },
     {
       id: "stale-timer",
-      label: "No unresolved stale timer",
+      label: status.staleTimerOpen
+        ? "Stale timer needs review"
+        : "No stale timer",
       ok: !status.staleTimerOpen,
-      href: "/today",
+      href: "/today?panel=active-timer",
       dismissible: false,
+      severity: status.staleTimerOpen ? "error" : "ok",
+      why: "A timer left running for many hours skews tracked time and reviews.",
+      howToFix: "Open the active timer panel and stop, discard, or review the entry.",
+      estimatedMinutes: 2,
     },
     {
       id: "recurrence",
-      label: "Recurring task generation healthy",
-      ok: true,
+      label:
+        status.recurringNeedingGeneration > 0
+          ? "Recurring templates need cleanup"
+          : "Recurring task generation healthy",
+      ok: status.recurringNeedingGeneration === 0,
       href: "/tasks/recurring",
       dismissible: true,
+      severity:
+        status.recurringNeedingGeneration > 0 ? "warning" : "ok",
+      why: "Active templates past their end date keep generating noise or block generation health.",
+      howToFix: "Pause, archive, or update end dates on overdue recurring templates.",
+      estimatedMinutes: 4,
     },
   ];
 }

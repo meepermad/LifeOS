@@ -107,7 +107,7 @@ describe("resolveNotificationDestination", () => {
     ).toBe(`/today?panel=active-timer&entry=${ENTRY_ID}`);
     expect(
       resolveNotificationDestination({ kind: "notification_settings" }),
-    ).toBe("/settings?section=notifications");
+    ).toBe("/settings/notifications");
   });
 
   it("falls back for unknown and malformed destinations", () => {
@@ -182,10 +182,10 @@ describe("sanitizeInternalReturnPath security", () => {
 describe("legacy push payload resolution", () => {
   it("maps legacy test/settings urls and falls back otherwise", () => {
     expect(resolvePathFromPushData({ url: "/settings" })).toBe(
-      "/settings?section=notifications",
+      "/settings/notifications",
     );
     expect(resolvePathFromPushData({ url: "/test" })).toBe(
-      "/settings?section=notifications",
+      "/settings/notifications",
     );
     expect(resolvePathFromPushData({ url: "/today" })).toBe("/today");
     expect(resolvePathFromPushData({ url: "/review/daily?mode=evening" })).toBe(

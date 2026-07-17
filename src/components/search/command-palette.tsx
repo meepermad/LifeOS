@@ -11,6 +11,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { globalSearchAction } from "@/lib/actions/search";
+import { stopTimerAction } from "@/lib/actions/timer";
+import { findCommandById } from "@/lib/search/command-registry";
 import {
   categoryLabel,
   matchLocalCommands,
@@ -40,7 +42,9 @@ export function CommandPalette({ open, onClose, variant = "modal" }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>(() => matchLocalCommands(""));
+  const [results, setResults] = useState<SearchResult[]>(() =>
+    matchLocalCommands(""),
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -82,7 +86,17 @@ export function CommandPalette({ open, onClose, variant = "modal" }: Props) {
 
   const selectResult = useCallback(
     (result: SearchResult) => {
+      const command = findCommandById(result.id);
       onClose();
+
+      if (command?.actionId === "stop-timer") {
+        void stopTimerAction().finally(() => {
+          router.push(result.href);
+          router.refresh();
+        });
+        return;
+      }
+
       router.push(result.href);
     },
     [onClose, router],
@@ -182,9 +196,16 @@ export function CommandPalette({ open, onClose, variant = "modal" }: Props) {
           className="max-h-[min(60vh,28rem)] overflow-y-auto p-2"
         >
           {isPending ? (
-            <p className="px-3 py-2 text-sm text-muted" role="status">
-              Searching…
-            </p>
+            <div
+              className="space-y-2 px-3 py-2"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="h-3 w-20 rounded bg-surface-elevated motion-safe:animate-pulse" />
+              <div className="h-10 w-full rounded-lg bg-surface-elevated motion-safe:animate-pulse" />
+              <div className="h-10 w-full rounded-lg bg-surface-elevated motion-safe:animate-pulse" />
+              <span className="sr-only">Searching</span>
+            </div>
           ) : null}
           {error ? (
             <p className="px-3 py-2 text-sm text-danger" role="alert">
@@ -212,7 +233,7 @@ export function CommandPalette({ open, onClose, variant = "modal" }: Props) {
                         type="button"
                         role="option"
                         aria-selected={active}
-                        className={`flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors ${
+                        className={`flex w-full min-h-11 flex-col rounded-lg px-3 py-3 text-left transition-colors ${
                           active
                             ? "bg-accent/15 text-foreground"
                             : "text-foreground hover:bg-surface-elevated"
@@ -222,7 +243,9 @@ export function CommandPalette({ open, onClose, variant = "modal" }: Props) {
                       >
                         <span className="text-sm font-medium">{item.title}</span>
                         {item.subtitle ? (
-                          <span className="text-xs text-muted">{item.subtitle}</span>
+                          <span className="text-xs text-muted">
+                            {item.subtitle}
+                          </span>
                         ) : null}
                       </button>
                     </li>

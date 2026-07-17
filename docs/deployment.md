@@ -26,6 +26,8 @@ npm test
 npm run build
 ```
 
+For RC1 product polish verification, also follow `docs/rc1-smoke.md`.
+
 ## 2. Vercel project import
 
 1. Sign in to [Vercel](https://vercel.com).

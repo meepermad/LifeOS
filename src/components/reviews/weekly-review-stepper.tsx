@@ -107,6 +107,34 @@ export function WeeklyReviewStepper({
     setStepIndex((index) => Math.max(index - 1, 0));
   }
 
+  useEffect(() => {
+    if (isComplete) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "j") {
+        event.preventDefault();
+        goNext();
+      }
+      if (event.key === "ArrowLeft" || event.key === "k") {
+        event.preventDefault();
+        goBack();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isComplete]);
+
   function togglePriority(taskId: string) {
     setSelectedPriorityIds((current) => {
       if (current.includes(taskId)) {

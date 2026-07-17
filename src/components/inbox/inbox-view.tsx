@@ -176,7 +176,11 @@ export function InboxView({ tasks }: InboxViewProps) {
       </div>
 
       {tasks.length === 0 ? (
-        <EmptyState message="Inbox is clear. Capture something above when it comes to mind." />
+        <EmptyState
+          message="Inbox is clear."
+          description="Capture tasks, ideas, and follow-ups here when they come to mind."
+          action={{ label: "Go to Today", href: "/today" }}
+        />
       ) : mode === "list" ? (
         <div className="space-y-3">
           {tasks.map((task) => (

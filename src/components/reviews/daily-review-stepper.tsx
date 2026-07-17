@@ -157,6 +157,34 @@ export function DailyReviewStepper({
     setStepIndex((index) => Math.max(index - 1, 0));
   }
 
+  useEffect(() => {
+    if (isComplete) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "j") {
+        event.preventDefault();
+        setStepIndex((index) => Math.min(index + 1, steps.length - 1));
+      }
+      if (event.key === "ArrowLeft" || event.key === "k") {
+        event.preventDefault();
+        setStepIndex((index) => Math.max(index - 1, 0));
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isComplete, steps.length]);
+
   function togglePriority(taskId: string) {
     setSelectedPriorityIds((current) => {
       if (current.includes(taskId)) {
@@ -249,6 +277,9 @@ export function DailyReviewStepper({
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">
             Step {stepIndex + 1} of {steps.length}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Keyboard: ←/k back · →/j continue
           </p>
           <h2 className="text-lg font-semibold text-foreground">
             {currentStep?.label}
